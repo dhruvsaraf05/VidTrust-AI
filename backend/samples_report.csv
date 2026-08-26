@@ -1,0 +1,4 @@
+filename,expected,media_type,verdict,confidence,model,metadata,frequency,ms,error
+_smoke_clip.mp4,UNKNOWN,video,LIKELY_REAL,0.2281,0.2851,,0.0000,1694,
+_smoke_pattern.png,UNKNOWN,image,LIKELY_REAL,0.0005,0.0006,,0.0000,309,
+_smoke_tagged.jpg,UNKNOWN,image,LIKELY_REAL,0.2504,0.0006,1.0000,0.0000,277,

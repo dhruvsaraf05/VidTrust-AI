@@ -14,3 +14,6 @@ opencv-python-headless>=4.10
 
 transformers>=4.46
 torch>=2.9
+
+# used by run_samples.py (already present transitively via huggingface-hub)
+httpx>=0.28
