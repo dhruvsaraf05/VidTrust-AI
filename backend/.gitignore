@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# HuggingFace weights are cached in ~/.cache/huggingface, not here.

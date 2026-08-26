@@ -1,0 +1,16 @@
+# VidTrust AI - Semester VII backend
+# Python 3.14 verified (torch 2.13.0+cpu ships a cp314 win_amd64 wheel).
+# Install torch first from the CPU index to avoid pulling CUDA payloads:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.20
+
+pillow>=11.0
+numpy>=2.1
+opencv-python-headless>=4.10
+
+transformers>=4.46
+torch>=2.9
