@@ -1,0 +1,32 @@
+{
+  "id": "544824",
+  "filename": "sample_image.jpg",
+  "media_type": "image",
+  "verdict": "LIKELY_REAL",
+  "confidence": 0.2504,
+  "processing_time_ms": 1455,
+  "signals": {
+    "model": {
+      "name": "Classifier",
+      "score": 0.0006,
+      "weight": 0.6,
+      "detail": "Organika/sdxl-detector",
+      "available": true
+    },
+    "metadata": {
+      "name": "Provenance",
+      "score": 1.0,
+      "weight": 0.25,
+      "detail": "Generator signature found: midjourney",
+      "available": true
+    },
+    "frequency": {
+      "name": "Frequency analysis",
+      "score": 0.0,
+      "weight": 0.15,
+      "detail": "Low high-frequency energy (ratio 0.039, provisional scale)",
+      "available": true
+    }
+  },
+  "frames": null
+}

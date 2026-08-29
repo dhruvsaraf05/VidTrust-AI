@@ -1,0 +1,243 @@
+{
+  "id": "d071f1",
+  "filename": "sample_video.mp4",
+  "media_type": "video",
+  "verdict": "LIKELY_REAL",
+  "confidence": 0.0035,
+  "processing_time_ms": 13836,
+  "signals": {
+    "model": {
+      "name": "Classifier",
+      "score": 0.0001,
+      "weight": 0.6,
+      "detail": "Organika/sdxl-detector | mean over 42 frames | 0/42 frames (0%) scored > 0.5",
+      "available": true
+    },
+    "metadata": {
+      "name": "Provenance",
+      "score": 0.0,
+      "weight": 0.25,
+      "detail": "No EXIF/XMP/C2PA metadata found (commonly stripped on upload)",
+      "available": false
+    },
+    "frequency": {
+      "name": "Frequency analysis",
+      "score": 0.0173,
+      "weight": 0.15,
+      "detail": "Mean high-frequency score over 9 of 42 sampled frames (provisional scale)",
+      "available": true
+    }
+  },
+  "frames": [
+    {
+      "index": 0,
+      "timestamp": 0.0,
+      "score": 0.0
+    },
+    {
+      "index": 1,
+      "timestamp": 1.0,
+      "score": 0.0
+    },
+    {
+      "index": 2,
+      "timestamp": 2.0,
+      "score": 0.0001
+    },
+    {
+      "index": 3,
+      "timestamp": 3.0,
+      "score": 0.0001
+    },
+    {
+      "index": 4,
+      "timestamp": 4.0,
+      "score": 0.0001
+    },
+    {
+      "index": 5,
+      "timestamp": 5.0,
+      "score": 0.0001
+    },
+    {
+      "index": 6,
+      "timestamp": 6.0,
+      "score": 0.0001
+    },
+    {
+      "index": 7,
+      "timestamp": 7.0,
+      "score": 0.0002
+    },
+    {
+      "index": 8,
+      "timestamp": 8.0,
+      "score": 0.0002
+    },
+    {
+      "index": 9,
+      "timestamp": 9.0,
+      "score": 0.0001
+    },
+    {
+      "index": 10,
+      "timestamp": 10.0,
+      "score": 0.0001
+    },
+    {
+      "index": 11,
+      "timestamp": 11.0,
+      "score": 0.0001
+    },
+    {
+      "index": 12,
+      "timestamp": 12.0,
+      "score": 0.0
+    },
+    {
+      "index": 13,
+      "timestamp": 13.0,
+      "score": 0.0001
+    },
+    {
+      "index": 14,
+      "timestamp": 14.0,
+      "score": 0.0
+    },
+    {
+      "index": 15,
+      "timestamp": 15.0,
+      "score": 0.0
+    },
+    {
+      "index": 16,
+      "timestamp": 16.0,
+      "score": 0.0
+    },
+    {
+      "index": 17,
+      "timestamp": 17.0,
+      "score": 0.0
+    },
+    {
+      "index": 18,
+      "timestamp": 18.0,
+      "score": 0.0
+    },
+    {
+      "index": 19,
+      "timestamp": 19.0,
+      "score": 0.0
+    },
+    {
+      "index": 20,
+      "timestamp": 20.0,
+      "score": 0.0
+    },
+    {
+      "index": 21,
+      "timestamp": 21.0,
+      "score": 0.0
+    },
+    {
+      "index": 22,
+      "timestamp": 22.0,
+      "score": 0.0
+    },
+    {
+      "index": 23,
+      "timestamp": 23.0,
+      "score": 0.0
+    },
+    {
+      "index": 24,
+      "timestamp": 24.0,
+      "score": 0.0
+    },
+    {
+      "index": 25,
+      "timestamp": 25.0,
+      "score": 0.0
+    },
+    {
+      "index": 26,
+      "timestamp": 26.0,
+      "score": 0.0001
+    },
+    {
+      "index": 27,
+      "timestamp": 27.0,
+      "score": 0.0001
+    },
+    {
+      "index": 28,
+      "timestamp": 28.0,
+      "score": 0.0001
+    },
+    {
+      "index": 29,
+      "timestamp": 29.0,
+      "score": 0.0002
+    },
+    {
+      "index": 30,
+      "timestamp": 30.0,
+      "score": 0.0001
+    },
+    {
+      "index": 31,
+      "timestamp": 31.0,
+      "score": 0.0004
+    },
+    {
+      "index": 32,
+      "timestamp": 32.0,
+      "score": 0.0001
+    },
+    {
+      "index": 33,
+      "timestamp": 33.0,
+      "score": 0.0002
+    },
+    {
+      "index": 34,
+      "timestamp": 34.0,
+      "score": 0.0001
+    },
+    {
+      "index": 35,
+      "timestamp": 35.0,
+      "score": 0.0001
+    },
+    {
+      "index": 36,
+      "timestamp": 36.0,
+      "score": 0.0001
+    },
+    {
+      "index": 37,
+      "timestamp": 37.0,
+      "score": 0.0
+    },
+    {
+      "index": 38,
+      "timestamp": 38.0,
+      "score": 0.0
+    },
+    {
+      "index": 39,
+      "timestamp": 39.0,
+      "score": 0.0
+    },
+    {
+      "index": 40,
+      "timestamp": 40.0,
+      "score": 0.0
+    },
+    {
+      "index": 41,
+      "timestamp": 41.0,
+      "score": 0.0
+    }
+  ]
+}

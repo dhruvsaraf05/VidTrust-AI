@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   VidTrust AI - visual language
+
+   This is a forensic instrument, not a consumer app. The design rules:
+
+     * one accent only (deep steel blue) for interactive affordances
+     * verdict colours are SEMANTIC, not decorative - they are the only other
+       colours in the system and they mean exactly one thing each
+     * every number renders in monospace with tabular figures, so digits line
+       up in columns and don't jitter as values change
+     * hairline rules and 2px radii - panels, not cards
+     * system font stacks only, no webfont fetch, so the demo cannot be broken
+       by a lecture-hall network
+
+   Legibility on a projector drove the contrast choices: ink on near-white,
+   nothing lighter than --color-ink-faint used for anything that must be read.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --color-canvas: #eceef0;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f5f6f8;
+
+  --color-rule: #d6dadf;
+  --color-rule-strong: #b4bbc3;
+
+  --color-ink: #14181c;
+  --color-ink-muted: #59626c;
+  --color-ink-faint: #838d97;
+
+  --color-accent: #17458f;
+  --color-accent-hover: #10336c;
+  --color-accent-soft: #e6ecf5;
+
+  /* Verdict semantics. Also used for the signal availability states. */
+  --color-ai: #a81e1e;
+  --color-ai-soft: #f8e9e9;
+  --color-real: #15614a;
+  --color-real-soft: #e4efeb;
+  --color-uncertain: #8a5a00;
+  --color-uncertain-soft: #f8f0e1;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas,
+    'Liberation Mono', monospace;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Tabular figures everywhere numbers appear, so columns of scores stay
+     aligned and a changing value doesn't shift the layout. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* Small uppercase field label - the instrument-panel voice. */
+  .micro {
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+}
