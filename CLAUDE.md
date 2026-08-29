@@ -96,12 +96,12 @@ backend/
 ├── run_samples.py             # sweeps samples/, writes samples_report.{json,csv}
 ├── calibrate_frequency.py     # measures FFT ratio spread across a folder
 ├── requirements.txt
+├── API_NOTES.md               # contract deviations and integration notes
 └── samples/
     ├── README.md              # what to collect and why
     ├── MANIFEST.csv           # ground truth: AI | REAL | UNKNOWN
     └── _smoke_*               # plumbing tests only — never demo material
 frontend/                      # React + Vite + Tailwind
-API_NOTES.md                   # contract deviations and integration notes
 ```
 
 ---
