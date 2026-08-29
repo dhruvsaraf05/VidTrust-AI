@@ -53,9 +53,21 @@ two branches could disagree silently.
 
 ## Additive, not a contract change
 
-`GET /api/health` returns model load status, the configured weights and
-thresholds, the size limit and the accepted extensions. Useful for a "backend
-connected" indicator and for confirming the classifier actually loaded.
+`GET /api/health` returns the configured weights and thresholds, the size
+limit, the accepted extensions, and the classifier's status:
+
+```json
+{ "status": "ok",       "error": null,                "model_loaded": true,  ... }
+{ "status": "degraded", "error": "MODEL_UNAVAILABLE", "model_loaded": false, ... }
+```
+
+**It stays HTTP 200 in both cases.** When the classifier is down the API is
+still usable — the metadata and frequency signals keep answering, and their
+weights renormalise — so a 503 would claim something untrue. Read `status`,
+not the HTTP code.
+
+This is the only place `MODEL_UNAVAILABLE` ever appears. `/api/analyze` never
+returns it.
 
 ## Things the frontend should expect
 

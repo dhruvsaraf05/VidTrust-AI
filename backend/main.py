@@ -159,9 +159,19 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 # ---------------------------------------------------------------------------
 @app.get("/api/health")
 async def health() -> dict:
+    """Additive status endpoint. Not part of the frozen /api/analyze contract.
+
+    This is the ONLY place `MODEL_UNAVAILABLE` is reported. When the classifier
+    is dead the API is still usable -- the metadata and frequency signals keep
+    answering (invariant 6) -- so this deliberately stays HTTP 200 and reports
+    the degradation in the body. A 503 would say "cannot serve requests", which
+    is not true. The frontend reads `status` for its classifier-down indicator.
+    """
+    loaded = model_detector.is_available()
     return {
-        "status": "ok",
-        "model_loaded": model_detector.is_available(),
+        "status": "ok" if loaded else "degraded",
+        "error": None if loaded else "MODEL_UNAVAILABLE",
+        "model_loaded": loaded,
         "model_name": model_detector.model_name(),
         "model_error": model_detector.load_error(),
         "weights": config.WEIGHTS,
