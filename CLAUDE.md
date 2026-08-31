@@ -51,7 +51,15 @@ member was to build the frontend but became unavailable; assume no other help.
 - Constants that were chosen by inspection must be labelled `PROVISIONAL` or
   `UNFITTED` in the code, and described that way in prose.
 
-Branches: `main` (integration), `feat/backend`, `feat/frontend`.
+Branches: `main` (integration; everything merges here on 2 Sept per the PRD)
+and `feat/backend`, the single working branch.
+
+`feat/frontend` was in the original scheme for the second contributor. It was
+never created and is not needed — one person maintaining two feature branches
+only means merging your own work between them. **Despite the name,
+`feat/backend` carries the frontend too.** Renaming it was considered and
+rejected: the branch is already pushed, and churn for a cosmetic gain is not
+worth it five days out from the demo.
 
 ---
 

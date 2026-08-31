@@ -1,56 +1,73 @@
 /**
  * Verdict thresholds and their visual treatment.
  *
- * These mirror THRESHOLD_AI_GENERATED / THRESHOLD_LIKELY_REAL in
- * backend/config.py. The backend is authoritative -- it sends `verdict` in the
- * response and the UI should render that field, not recompute it. `verdictFor`
- * exists for mock data and for styling previews, NOT to second-guess the API.
+ * Thresholds are READ FROM GET /api/health, not hardcoded here. The PRD's
+ * threshold-selection work derives them from an ROC curve, so they are
+ * expected to move; anything that bakes 0.65/0.35 into the UI would silently
+ * disagree with the backend the moment they do.
  *
- * If the PRD's threshold-selection work (D7) moves these, update both files.
- * GET /api/health reports the live values under `thresholds`.
+ * DEFAULT_THRESHOLDS is a last-resort fallback for when health cannot be
+ * reached at all (mock mode with the server stopped). It mirrors
+ * backend/config.py at time of writing and is the one place these numbers
+ * appear on the client.
  */
 
-export const THRESHOLDS = {
-  AI_GENERATED: 0.65,
-  LIKELY_REAL: 0.35,
+export const DEFAULT_THRESHOLDS = {
+  ai_generated: 0.65,
+  likely_real: 0.35,
 }
 
-export const VERDICTS = ['AI_GENERATED', 'UNCERTAIN', 'LIKELY_REAL']
+export const VERDICTS = ['LIKELY_REAL', 'UNCERTAIN', 'AI_GENERATED']
 
-/** Only for mock/preview. Prefer the `verdict` field from the API. */
-export function verdictFor(confidence) {
-  if (confidence >= THRESHOLDS.AI_GENERATED) return 'AI_GENERATED'
-  if (confidence <= THRESHOLDS.LIKELY_REAL) return 'LIKELY_REAL'
+/** Only for previews. The API sends `verdict`; render that. */
+export function verdictFor(confidence, thresholds = DEFAULT_THRESHOLDS) {
+  if (confidence >= thresholds.ai_generated) return 'AI_GENERATED'
+  if (confidence <= thresholds.likely_real) return 'LIKELY_REAL'
   return 'UNCERTAIN'
 }
 
 /**
- * UNCERTAIN is styled now, deliberately, rather than discovered during the
- * demo. It is not a degraded AI_GENERATED -- it is the system declining to
- * answer, which the PRD treats as a legitimate third outcome. It reads as
- * neutral amber, not as a failure state.
+ * UNCERTAIN is not a degraded AI_GENERATED. It is the system declining to
+ * answer, which the project treats as a legitimate third outcome — so it gets
+ * its own hue and its own wording, and the threshold track draws it as a band
+ * rather than a boundary.
+ *
+ * Every verdict carries a glyph as well as a colour. Colour never carries
+ * meaning on its own anywhere in this interface.
  */
 export const VERDICT_STYLE = {
   AI_GENERATED: {
     label: 'AI-generated',
-    text: 'text-ai',
-    bg: 'bg-ai-soft',
-    border: 'border-ai/30',
-    dot: 'bg-ai',
-  },
-  LIKELY_REAL: {
-    label: 'Likely real',
-    text: 'text-real',
-    bg: 'bg-real-soft',
-    border: 'border-real/30',
-    dot: 'bg-real',
+    short: 'AI-GENERATED',
+    glyph: '▲',
+    reading: 'Signals agree this was machine-generated.',
+    fg: 'text-crimson',
+    bgTint: 'bg-crimson-tint',
+    border: 'border-crimson',
+    fill: 'var(--color-crimson)',
+    tint: 'var(--color-crimson-tint)',
   },
   UNCERTAIN: {
     label: 'Uncertain',
-    text: 'text-uncertain',
-    bg: 'bg-uncertain-soft',
-    border: 'border-uncertain/30',
-    dot: 'bg-uncertain',
+    short: 'UNCERTAIN',
+    glyph: '◆',
+    reading: 'Signals disagree. The system is declining to answer.',
+    fg: 'text-ochre',
+    bgTint: 'bg-ochre-tint',
+    border: 'border-ochre',
+    fill: 'var(--color-ochre)',
+    tint: 'var(--color-ochre-tint)',
+  },
+  LIKELY_REAL: {
+    label: 'Likely real',
+    short: 'LIKELY REAL',
+    glyph: '●',
+    reading: 'Signals agree this was captured, not generated.',
+    fg: 'text-teal',
+    bgTint: 'bg-teal-tint',
+    border: 'border-teal',
+    fill: 'var(--color-teal)',
+    tint: 'var(--color-teal-tint)',
   },
 }
 
