@@ -1,50 +1,89 @@
 @import 'tailwindcss';
 
 /* ---------------------------------------------------------------------------
-   VidTrust AI - visual language
+   VidTrust AI — visual system
 
-   This is a forensic instrument, not a consumer app. The design rules:
+   Reference points: scientific instrument readouts, lab report forms, film
+   scanner software. Not a dashboard, not a consumer app.
 
-     * one accent only (deep steel blue) for interactive affordances
-     * verdict colours are SEMANTIC, not decorative - they are the only other
-       colours in the system and they mean exactly one thing each
-     * every number renders in monospace with tabular figures, so digits line
-       up in columns and don't jitter as values change
-     * hairline rules and 2px radii - panels, not cards
-     * system font stacks only, no webfont fetch, so the demo cannot be broken
-       by a lecture-hall network
+   The organising idea: a verdict here is an arithmetic result, so the page is
+   built like a worked calculation. IBM Plex Mono is the DISPLAY face — an
+   instrument's personality lives in its numerals — and Plex Sans recedes to
+   labels and prose. Every figure is tabular so columns stay in register and
+   digits don't jitter as values change.
 
-   Legibility on a projector drove the contrast choices: ink on near-white,
-   nothing lighter than --color-ink-faint used for anything that must be read.
+   Fonts are vendored in public/fonts (OFL-1.1, see LICENSE.txt there). No CDN:
+   a lecture-hall network must not be able to break the demo.
 --------------------------------------------------------------------------- */
 
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('/fonts/plex-sans-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('/fonts/plex-sans-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('/fonts/plex-sans-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('/fonts/plex-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('/fonts/plex-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('/fonts/plex-mono-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
 @theme {
-  --color-canvas: #eceef0;
-  --color-surface: #ffffff;
-  --color-surface-sunken: #f5f6f8;
+  /* Ground is warm off-white; panels are printed on lighter stock and sit on
+     top of it. Deliberately not cream — the accent is a desaturated
+     slate-indigo, never terracotta. */
+  --color-paper: #efede9;
+  --color-panel: #f8f7f5;
+  --color-panel-sunk: #e9e7e2;
 
-  --color-rule: #d6dadf;
-  --color-rule-strong: #b4bbc3;
+  --color-ink: #16171a;
+  --color-ink-2: #55575c;
+  --color-ink-3: #8a8c90;
 
-  --color-ink: #14181c;
-  --color-ink-muted: #59626c;
-  --color-ink-faint: #838d97;
+  --color-rule: #d8d5cf;
+  --color-rule-2: #c3bfb7;
 
-  --color-accent: #17458f;
-  --color-accent-hover: #10336c;
-  --color-accent-soft: #e6ecf5;
+  /* The only interactive hue. */
+  --color-accent: #3b4a6b;
+  --color-accent-hi: #2a3752;
+  --color-accent-tint: #e4e6ec;
 
-  /* Verdict semantics. Also used for the signal availability states. */
-  --color-ai: #a81e1e;
-  --color-ai-soft: #f8e9e9;
-  --color-real: #15614a;
-  --color-real-soft: #e4efeb;
-  --color-uncertain: #8a5a00;
-  --color-uncertain-soft: #f8f0e1;
+  /* Verdict semantics — printerly and desaturated, never saturated UI colours.
+     These three are the only other hues in the system. */
+  --color-crimson: #8e2a2a;
+  --color-crimson-tint: #f0e5e3;
+  --color-teal: #1f5c55;
+  --color-teal-tint: #e2ece9;
+  --color-ochre: #8a6210;
+  --color-ochre-tint: #f3ecdd;
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas,
-    'Liberation Mono', monospace;
+  --font-sans: 'Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 @layer base {
@@ -53,25 +92,88 @@
   }
 
   body {
-    background-color: var(--color-canvas);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-size: 0.9375rem; /* 15px — nothing in this design goes under 13px */
+    line-height: 1.55;
   }
 
-  /* Tabular figures everywhere numbers appear, so columns of scores stay
-     aligned and a changing value doesn't shift the layout. */
-  .num {
+  /* Keyboard focus must always be visible. Colour never carries meaning
+     alone anywhere in this interface, and that includes focus. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Every number on the page. Tabular figures keep the ledger columns in
+     register and stop the elapsed clock from shifting the layout. */
+  .fig {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1;
   }
 
-  /* Small uppercase field label - the instrument-panel voice. */
-  .micro {
-    font-size: 0.6875rem;
-    line-height: 1;
-    letter-spacing: 0.08em;
+  /* Field label. The instrument-panel voice: small, letterspaced, quiet. */
+  .label {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.2;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
-    color: var(--color-ink-muted);
+    color: var(--color-ink-2);
+  }
+
+  .label-faint {
+    color: var(--color-ink-3);
+  }
+
+  /* "No reading" track.
+     A signal that could not run is NOT a zero, so it must never be drawn as
+     an empty bar on the same scale as a real score. Diagonal hatching is the
+     lab-chart convention for missing data, and it reads as categorically
+     different rather than as a low value. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-rule) 0 1px,
+      transparent 1px 6px
+    );
+  }
+
+  .panel {
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  /* The single piece of motion in the interface: the report settling into
+     place once the analysis returns. Everything else is static. */
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .reveal {
+    animation: reveal 320ms cubic-bezier(0.2, 0.6, 0.3, 1) both;
   }
 }

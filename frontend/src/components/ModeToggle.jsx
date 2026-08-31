@@ -12,7 +12,7 @@ export default function ModeToggle({ mode, onChange, disabled }) {
     <div
       role="group"
       aria-label="Data source"
-      className="flex items-center rounded-sm border border-rule bg-surface p-0.5"
+      className="flex items-center rounded-[3px] border border-rule bg-panel p-0.5"
     >
       {[
         { value: MODES.MOCK, label: 'Mock' },
@@ -27,10 +27,10 @@ export default function ModeToggle({ mode, onChange, disabled }) {
             aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={[
-              'cursor-pointer px-3 py-1 text-xs font-medium tracking-wide transition-colors disabled:cursor-not-allowed',
+              'label cursor-pointer rounded-[2px] px-3 py-1.5 transition-colors disabled:cursor-not-allowed',
               active
-                ? 'bg-ink text-white'
-                : 'text-ink-muted hover:text-ink disabled:hover:text-ink-muted',
+                ? 'bg-ink text-panel'
+                : 'hover:text-ink disabled:hover:text-ink-2',
             ].join(' ')}
           >
             {option.label}
