@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 # HuggingFace weights are cached in ~/.cache/huggingface, not here.
+
+# Evaluation set: ~400 images streamed from Community Forensics.
+# Rebuild with build_evaluation_set.py; never commit the images.
+evaluation_set/
+evaluation_report*.csv
+evaluation_metrics*.json

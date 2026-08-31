@@ -138,7 +138,6 @@ function ResultView({ result, thresholds }) {
       <FrameTimeline
         frames={result.frames}
         modelAvailable={result.signals?.model?.available}
-        thresholds={thresholds}
       />
 
       <RawResponse result={result} />

@@ -29,13 +29,25 @@ logger = logging.getLogger(__name__)
 _TAG_NAMES = {v: k for k, v in ExifTags.TAGS.items()}
 
 
-def _match_signature(haystack: str) -> str | None:
-    """Return the first generator signature present in the text, if any."""
+def _match_signature(haystack: str, signatures=None) -> str | None:
+    """Return the first signature present in the text, if any.
+
+    `signatures` defaults to the full list, which is only safe for decoded
+    EXIF/XMP text. Raw binary must pass config.RAW_SCAN_SIGNATURES instead --
+    see the note in config.py about short strings matching byte noise.
+    """
     lowered = haystack.lower()
-    for signature in config.GENERATOR_SIGNATURES:
+    for signature in signatures or config.GENERATOR_SIGNATURES:
         if signature in lowered:
             return signature
     return None
+
+
+def _describe(signature: str, where: str) -> str:
+    """Human-readable detail string, saying where the evidence came from."""
+    if signature.startswith("c2pa") or signature in ("jumbf", "content credentials"):
+        return f"C2PA / Content Credentials manifest found ({where})"
+    return f"Generator signature found: {signature} ({where})"
 
 
 def _decode(value) -> str:
@@ -128,19 +140,28 @@ def analyze(path: str, media_type: str) -> dict:
     if media_type == "image":
         texts, has_camera_exif = _collect_image_text(path)
 
-    raw = _scan_raw_bytes(path)
-    if raw:
-        texts.append(raw)
-
-    # --- generator fingerprint wins outright -------------------------------
+    # --- structured metadata first, with the full signature list -----------
+    # These are decoded EXIF tags and XMP packets: real text, where a short
+    # generator name is a word rather than a coincidence of bytes.
     for text in texts:
         signature = _match_signature(text)
         if signature:
-            if signature in ("c2pa", "content credentials"):
-                detail = "C2PA / Content Credentials manifest found"
-            else:
-                detail = f"Generator signature found: {signature}"
-            return {"score": 1.0, "available": True, "detail": detail}
+            return {
+                "score": 1.0,
+                "available": True,
+                "detail": _describe(signature, "metadata"),
+            }
+
+    # --- then the bounded raw scan, with the strict list only --------------
+    raw = _scan_raw_bytes(path)
+    if raw:
+        signature = _match_signature(raw, config.RAW_SCAN_SIGNATURES)
+        if signature:
+            return {
+                "score": 1.0,
+                "available": True,
+                "detail": _describe(signature, "raw scan"),
+            }
 
     # --- genuine camera EXIF ------------------------------------------------
     if has_camera_exif:

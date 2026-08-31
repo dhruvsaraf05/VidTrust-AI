@@ -2,7 +2,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -30,8 +29,15 @@ const TICK = {
  * and the API sends zeros. Plotting those would draw a flat line along the
  * bottom that looks exactly like "every frame is real". So we refuse to draw
  * it and say why instead.
+ *
+ * The only guide line here is 0.5. These are the classifier's own
+ * probabilities, so 0.5 is their own boundary and it matches the "frames
+ * scored > 0.5" figure the API reports. The 0.35/0.65 verdict thresholds are
+ * deliberately NOT drawn: they apply to fused confidence, which is a different
+ * quantity on a different axis, and shading them here would invite a reading
+ * the numbers do not support.
  */
-export default function FrameTimeline({ frames, modelAvailable, thresholds }) {
+export default function FrameTimeline({ frames, modelAvailable }) {
   if (!frames || frames.length === 0) return null
 
   return (
@@ -72,17 +78,6 @@ export default function FrameTimeline({ frames, modelAvailable, thresholds }) {
                     />
                   </linearGradient>
                 </defs>
-
-                {/* The band where a fused confidence would be UNCERTAIN, drawn
-                    for reference. Frame scores are a different quantity, so it
-                    is context, not a decision boundary for this series. */}
-                <ReferenceArea
-                  y1={thresholds.likely_real}
-                  y2={thresholds.ai_generated}
-                  fill="var(--color-ochre)"
-                  fillOpacity={0.08}
-                  stroke="none"
-                />
 
                 <CartesianGrid stroke="var(--color-rule)" strokeDasharray="2 4" vertical={false} />
 

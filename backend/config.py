@@ -113,3 +113,33 @@ EXIF_TEXT_TAGS = ["Software", "ImageDescription", "Artist", "UserComment",
 # Bytes scanned from each end of a file when looking for raw C2PA/XMP markers.
 # Bounded so a 50 MB video does not turn into a 50 MB string search.
 RAW_SCAN_BYTES = 512 * 1024
+
+# Signatures safe to search for in RAW BINARY, as opposed to in decoded EXIF or
+# XMP text.
+#
+# Measured on the 400-image evaluation set: the 3-character string "veo" matched
+# 83 of 88 raw-scan hits -- 62 of them on real FFHQ photographs -- because a
+# short case-insensitive sequence occurs by chance in a few hundred KB of
+# compressed image data. It made the provenance signal fire on real photos more
+# often than on generated ones, at full 1.0 confidence.
+#
+# So the raw scan uses only signatures long enough that a chance match is
+# negligible. Short generator names ("veo", "sora", "sdxl", "flux") stay in
+# GENERATOR_SIGNATURES above and are still matched inside genuine EXIF/XMP text
+# fields, where they are real words rather than byte noise.
+#
+# Consequence, stated rather than hidden: a video whose only evidence is the
+# bare string "sora" in its container will not be detected. That is the correct
+# trade -- a signal that fires on a third of all real photographs is worse than
+# one with a known blind spot.
+RAW_SCAN_MIN_LENGTH = 6
+RAW_SCAN_SIGNATURES = [
+    signature for signature in GENERATOR_SIGNATURES
+    if len(signature) >= RAW_SCAN_MIN_LENGTH
+] + [
+    # Structural C2PA/JUMBF box markers: long enough to be safe, and they are
+    # what an actual Content Credentials manifest contains.
+    "jumbf",
+    "c2pa.assertions",
+    "c2pa.claim",
+]
