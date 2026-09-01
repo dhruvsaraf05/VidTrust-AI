@@ -9,3 +9,5 @@ __pycache__/
 evaluation_set/
 evaluation_report*.csv
 evaluation_metrics*.json
+ablation*.json
+failure_analysis.json

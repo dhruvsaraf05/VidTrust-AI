@@ -116,6 +116,76 @@ def safe_divide(numerator: float, denominator: float) -> float | None:
 
 
 # ---------------------------------------------------------------------------
+# Resolution normalisation
+# ---------------------------------------------------------------------------
+CROP_SIZE = 512
+NORMALISED_DIRNAME = "_normalised"
+
+
+def normalise_image(source: Path, out_dir: Path) -> tuple[Path, str]:
+    """Centre-crop to CROP_SIZE x CROP_SIZE of NATIVE pixels. No resampling.
+
+    The confound this removes
+    -------------------------
+    In the public set the real images are natively 1024x1024 and the generated
+    ones 512x512. Every detector resizes to 512 internally, so the real images
+    arrive having been downsampled -- which destroys high-frequency content --
+    while the generated images arrive untouched. The frequency signal then
+    separates the classes by measuring who got downsampled, not who was
+    synthesised.
+
+    Why cropping rather than resizing
+    ---------------------------------
+    Resizing everything to a common target does NOT fix this. A 1024 image
+    resized to 512 is still downsampled 2x while a native 512 image is not, so
+    the differential survives the "identical" operation -- the operation is the
+    same but its EFFECT depends on the input size, which is exactly what
+    differs by class.
+
+    A centre crop takes CROP_SIZE native pixels out of whatever it is given.
+    Nothing is interpolated, no frequency content is created or destroyed, and
+    every image reaches the detectors as an unresampled 512x512 block. That
+    makes the processing history genuinely identical across classes, which is
+    the requirement.
+
+    What it does not fix: the crop shows a sub-region of a large image and the
+    whole of a small one, so framing differs. That is a content difference, not
+    a resampling one, and it is reported separately.
+
+    Images smaller than CROP_SIZE on a side must be scaled up first -- that
+    reintroduces resampling for those files, so the count is reported.
+
+    Saved as PNG: lossless, so the crop itself adds no compression artefacts.
+    EXIF is not carried across, which is why this mode is refused on tracks
+    where provenance matters.
+    """
+    from PIL import Image
+
+    note = ""
+    with Image.open(source) as image:
+        image = image.convert("RGB")
+        width, height = image.size
+
+        if width < CROP_SIZE or height < CROP_SIZE:
+            scale = CROP_SIZE / min(width, height)
+            image = image.resize(
+                (max(CROP_SIZE, round(width * scale)),
+                 max(CROP_SIZE, round(height * scale))),
+                Image.LANCZOS,
+            )
+            width, height = image.size
+            note = "upscaled"
+
+        left = (width - CROP_SIZE) // 2
+        top = (height - CROP_SIZE) // 2
+        cropped = image.crop((left, top, left + CROP_SIZE, top + CROP_SIZE))
+
+    target = out_dir / f"{source.stem}.png"
+    cropped.save(target, format="PNG")
+    return target, note
+
+
+# ---------------------------------------------------------------------------
 # Manifest
 # ---------------------------------------------------------------------------
 def load_manifest(path: Path, carry: list[str]) -> dict[str, dict]:
@@ -143,6 +213,10 @@ def main() -> int:
     parser.add_argument("--track", choices=sorted(TRACKS), required=True)
     parser.add_argument("--limit", type=int, default=0,
                         help="stop after N files (for a quick smoke run)")
+    parser.add_argument("--normalise", choices=["none", "crop"], default="none",
+                        help="crop: centre-crop every image to 512x512 native "
+                             "pixels before analysis, removing the resampling "
+                             "confound. See normalise_image().")
     args = parser.parse_args()
 
     track = TRACKS[args.track]
@@ -182,6 +256,23 @@ def main() -> int:
         return 1
     print()
 
+    # Normalisation strips metadata (PNG re-save), so it must never be used on
+    # a track whose whole purpose is provenance.
+    normalise_dir = None
+    upscaled_count = 0
+    if args.normalise == "crop":
+        if args.track == "samples":
+            print("--normalise crop re-saves images as PNG, which discards EXIF.")
+            print("The samples track exists to exercise provenance, so refusing.")
+            return 1
+        normalise_dir = folder.parent / NORMALISED_DIRNAME
+        normalise_dir.mkdir(parents=True, exist_ok=True)
+        for stale in normalise_dir.glob("*"):
+            stale.unlink()
+        print(f"normalise : centre-crop {CROP_SIZE}x{CROP_SIZE} native pixels, "
+              f"no resampling")
+        print(f"            writing to {normalise_dir}/\n")
+
     print("Loading classifier...")
     if not model_detector.load_model():
         print(f"  ! classifier unavailable: {model_detector.load_error()}")
@@ -199,10 +290,16 @@ def main() -> int:
 
         file_started = time.perf_counter()
         try:
+            analysis_path = path
+            if normalise_dir is not None and not is_video:
+                analysis_path, note = normalise_image(path, normalise_dir)
+                if note == "upscaled":
+                    upscaled_count += 1
+
             result = (
-                aggregator.analyze_video(str(path))
+                aggregator.analyze_video(str(analysis_path))
                 if is_video
-                else aggregator.analyze_image(str(path))
+                else aggregator.analyze_image(str(analysis_path))
             )
             error = ""
         except Exception as exc:  # a corrupt file is a result, not a crash
@@ -295,6 +392,11 @@ def main() -> int:
     metrics = {
         "track": args.track,
         "note": track["note"],
+        "normalisation": (
+            f"centre-crop {CROP_SIZE}x{CROP_SIZE} native pixels, no resampling"
+            if args.normalise == "crop" else "none (images analysed as-is)"
+        ),
+        "upscaled_before_crop": upscaled_count,
         "run_at": datetime.now(timezone.utc).isoformat(),
         "elapsed_seconds": round(total_elapsed, 1),
         "model": {
@@ -342,13 +444,14 @@ def main() -> int:
         + [f"{key}_{suffix}" for key in SIGNALS for suffix in ("score", "available")]
         + ["processing_ms", "error"]
     )
-    report_path = Path(f"evaluation_report_{args.track}.csv")
+    suffix = "_normalised" if args.normalise == "crop" else ""
+    report_path = Path(f"evaluation_report_{args.track}{suffix}.csv")
     with report_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(records)
 
-    metrics_path = Path(f"evaluation_metrics_{args.track}.json")
+    metrics_path = Path(f"evaluation_metrics_{args.track}{suffix}.json")
     metrics_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     # --- report -------------------------------------------------------------
@@ -356,7 +459,9 @@ def main() -> int:
         return f"{label:<22}{'n/a' if value is None else f'{value:.4f}'}"
 
     print(f"\n{'=' * 62}")
-    print(f"TRACK {args.track.upper()} -- {len(records)} files in {total_elapsed:.0f}s")
+    print(f"TRACK {args.track.upper()} "
+          f"({'NORMALISED' if args.normalise == 'crop' else 'naive'}) "
+          f"-- {len(records)} files in {total_elapsed:.0f}s")
     print("=" * 62)
     print(f"labelled              {len(scored)}")
     print(f"decided               {len(decided)}")
@@ -365,6 +470,9 @@ def main() -> int:
     print(f"degraded runs         {metrics['counts']['degraded']}   "
           f"-- at least one signal unavailable")
     print(f"signal availability   {availability}")
+    if args.normalise == "crop" and upscaled_count:
+        print(f"upscaled before crop  {upscaled_count}  "
+              f"-- these DID get resampled; the rest did not")
     print()
     print(f"confusion matrix (positive = AI, {len(abstained)} abstentions excluded)")
     print(f"                   predicted AI   predicted REAL")
