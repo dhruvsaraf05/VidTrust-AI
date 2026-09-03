@@ -6,8 +6,8 @@ import FrameTimeline from './components/FrameTimeline'
 import HealthIndicator from './components/HealthIndicator'
 import ModeToggle from './components/ModeToggle'
 import RawResponse from './components/RawResponse'
-import ThemeSwitcher from './components/ThemeSwitcher' // TEMPORARY
 import SignalLedger from './components/SignalLedger'
+import ThemeToggle from './components/ThemeToggle'
 import ThresholdTrack from './components/ThresholdTrack'
 import UploadZone from './components/UploadZone'
 import UrlZone from './components/UrlZone'
@@ -138,7 +138,7 @@ export default function App() {
           <div className="flex items-center gap-5">
             <HealthIndicator mode={resolvedMode} state={healthState} />
             <ModeToggle mode={resolvedMode} onChange={setMode} disabled={busy} />
-            <ThemeSwitcher />
+            <ThemeToggle />
           </div>
         </div>
       </header>

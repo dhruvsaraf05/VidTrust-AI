@@ -1,8 +1,9 @@
-"""WCAG AA contrast check for every palette.
+"""WCAG AA contrast check for both palettes (light and dark).
 
-Parses the token blocks out of src/index.css (the default warm palette) and
-src/themes.css (the alternatives), then checks each text colour against the
-background it is actually rendered on.
+Parses the `@theme` block (light, the default) and the
+`:root[data-theme='dark']` block out of src/index.css -- both palettes live in
+that one file -- then checks each text colour against the background it is
+actually rendered on.
 
 Checking by eye does not work: a colour that looks fine on a laptop can fall
 under 4.5:1 and disappear on a projector at the back of a room.
@@ -70,13 +71,19 @@ def tokens_from(text: str) -> dict[str, str]:
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     index_css = (root / "src" / "index.css").read_text(encoding="utf-8")
-    themes_css = (root / "src" / "themes.css").read_text(encoding="utf-8")
 
-    palettes = {"Warm (default)": tokens_from(index_css)}
-    for name, block in re.findall(
-        r"data-theme='([a-z]+)'\]\s*\{(.*?)\}", themes_css, re.S
-    ):
-        palettes[name] = tokens_from(block)
+    light_block = re.search(r"@theme\s*\{(.*?)\n\}", index_css, re.S)
+    dark_block = re.search(
+        r"data-theme='dark'\]\s*\{(.*?)\n\}", index_css, re.S
+    )
+    if not light_block or not dark_block:
+        print("Could not find both palette blocks in index.css")
+        return 1
+
+    palettes = {
+        "Light (default)": tokens_from(light_block.group(1)),
+        "Dark": tokens_from(dark_block.group(1)),
+    }
 
     failures = 0
     for palette, tokens in palettes.items():
