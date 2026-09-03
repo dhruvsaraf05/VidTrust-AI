@@ -144,8 +144,6 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24">
-        <AboutPanel />
-
         <div className="mb-5 flex items-center gap-0.5 rounded-[3px] border border-rule bg-panel p-0.5 w-fit">
           {[
             { value: 'file', label: 'Upload file' },
@@ -198,6 +196,12 @@ export default function App() {
             onSwitchToLive={() => setMode(MODES.LIVE)}
           />
         )}
+
+        {/* Below the tool itself, always: the argument for what it does,
+            not blocking the action a visitor came here to take. */}
+        <div className={result || failure ? 'mt-16' : 'mt-10'}>
+          <AboutPanel />
+        </div>
       </main>
     </div>
   )
