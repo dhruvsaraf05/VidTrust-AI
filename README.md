@@ -180,9 +180,34 @@ Errors return `{"error": CODE, "message": "..."}`. **Branch on the `error`
 field, not the HTTP status.** Full contract, including the two codes that are
 deliberately unreachable, is in [backend/API_NOTES.md](backend/API_NOTES.md).
 
+`POST /api/analyze-url` — JSON body `{"url": "..."}`. Fetches public media with
+yt-dlp and runs it through the **same** video pipeline an upload takes, so a URL
+and an upload of the same clip give the same verdict. Returns the `/api/analyze`
+shape plus a `source` object (`platform`, `title`, `duration_s`), and adds four
+codes: `URL_INVALID`, `URL_FETCH_FAILED`, `URL_TOO_LONG`, `URL_TOO_LARGE`.
+`/api/analyze` itself is unchanged.
+
+Limits are enforced before or during the fetch, never after: 60 seconds
+(rejected from the metadata probe, before any media is downloaded), 720p (via
+format selection), 50 MB, and a 30-second wall clock.
+
 `GET /api/health` reports classifier status, weights, thresholds and limits.
 The frontend reads its verdict thresholds from here rather than hardcoding
 them.
+
+### On downloading platform media
+
+URL ingest downloads media from third-party platforms for analysis.
+**YouTube's Terms of Service restrict downloading content**, and other
+platforms have comparable terms. This feature is used here for academic
+research — analysing short public clips to evaluate a detector, retaining
+nothing: the media is written to a temporary directory and deleted in a
+`finally` block on every path, including failures.
+
+No authentication is attempted or supported. There is no cookie handling, no
+credential passing and no workaround for login walls; private and
+login-gated media simply fail with `URL_FETCH_FAILED`. Anyone deploying this
+beyond a research setting needs to review those terms themselves.
 
 ---
 

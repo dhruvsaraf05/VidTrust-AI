@@ -427,6 +427,19 @@ per generator, individual slip rates are coarse.
 - Clips longer than 60 seconds are analysed over their first 60 seconds only;
   the response says so. Spreading the same 60-frame budget across the full
   duration would be a better use of it.
+- **URL ingest downloads third-party platform media.** YouTube's Terms of
+  Service restrict downloading, and other platforms have comparable terms. It
+  is used here for academic research on short public clips, retaining nothing —
+  media is deleted in a `finally` block on every path. No authentication is
+  attempted: no cookies, no credentials, no workaround for login walls. In
+  practice **Instagram fails consistently** behind its login wall and is not
+  demonstrable; YouTube works. That asymmetry is a property of platform access
+  policy, not of the detector.
+- **Provenance is structurally unavailable for every URL.** Platforms re-encode
+  on upload, discarding EXIF/XMP/C2PA, so the metadata signal renormalises out
+  on every URL analysis. The interface says so explicitly rather than reporting
+  a generic absence — the same effect measured on the WhatsApp files in Track B
+  (§9), now visible at the point of use.
 - `.heic` is not an accepted upload format. The four camera originals in
   `samples/` were converted to JPEG with EXIF preserved for evaluation; adding
   HEIC support would change the frozen contract's accepted-extensions list.

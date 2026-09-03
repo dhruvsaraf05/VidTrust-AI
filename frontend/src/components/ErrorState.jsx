@@ -28,6 +28,23 @@ const MESSAGES = {
     action:
       'Restart the backend and check its startup log for the model download.',
   },
+  URL_INVALID: {
+    title: 'That link is not valid',
+    action: 'Paste a full http(s) link to a public video page.',
+  },
+  URL_FETCH_FAILED: {
+    title: 'The media could not be fetched',
+    action:
+      'Public links only. Private posts, login walls and region-blocked media cannot be reached, and no credentials are used.',
+  },
+  URL_TOO_LONG: {
+    title: 'That clip is too long',
+    action: 'Pick a clip of 60 seconds or less.',
+  },
+  URL_TOO_LARGE: {
+    title: 'That media is over the 50 MB limit',
+    action: 'Pick a shorter or lower-resolution clip.',
+  },
   NETWORK_ERROR: {
     title: 'No response from the backend',
     action: 'Start the server, then upload the file again.',

@@ -17,15 +17,20 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
+import shutil
+from pathlib import Path
+
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 import config
 from detectors import model_detector
 from pipeline import aggregator
+from pipeline.url_fetcher import UrlError, fetch as fetch_url
 from pipeline.video_sampler import VideoReadError
 
 logging.basicConfig(
@@ -66,6 +71,12 @@ ERROR_STATUS = {
     "NO_FACES_DETECTED": 422,
     "PROCESSING_FAILED": 500,
     "MODEL_UNAVAILABLE": 503,
+    # Additive, for POST /api/analyze-url only. The /api/analyze contract is
+    # unchanged and none of these can be returned by it.
+    "URL_INVALID": 400,
+    "URL_FETCH_FAILED": 502,
+    "URL_TOO_LONG": 413,
+    "URL_TOO_LARGE": 413,
 }
 
 
@@ -129,15 +140,23 @@ async def validation_error_handler(
     missing or misnamed) returns FastAPI's default {"detail": [...]} envelope,
     which the frontend has no branch for.
     """
+    detail = exc.errors()[0].get("msg", "invalid") if exc.errors() else "invalid"
+
+    # The two endpoints take different bodies, so a validation failure has to
+    # say which one it is talking about.
+    if request.url.path.endswith("/analyze-url"):
+        code, message = "URL_INVALID", (
+            f"Request body invalid -- send JSON with a single \"url\" field. ({detail})"
+        )
+    else:
+        code, message = "UNSUPPORTED_FORMAT", (
+            "Request body invalid -- send multipart/form-data with a "
+            f"single field named 'file'. ({detail})"
+        )
+
     return JSONResponse(
-        status_code=ERROR_STATUS["UNSUPPORTED_FORMAT"],
-        content={
-            "error": "UNSUPPORTED_FORMAT",
-            "message": (
-                "Request body invalid -- send multipart/form-data with a "
-                f"single field named 'file'. ({exc.errors()[0].get('msg', 'invalid')})"
-            ),
-        },
+        status_code=ERROR_STATUS[code],
+        content={"error": code, "message": message},
     )
 
 
@@ -278,3 +297,76 @@ async def analyze(file: UploadFile = File(...)) -> JSONResponse:
         filename, payload["verdict"], payload["confidence"], elapsed_ms,
     )
     return JSONResponse(content=payload)
+
+
+class UrlRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/analyze-url")
+async def analyze_url(body: UrlRequest) -> JSONResponse:
+    """Fetch media from a URL, then run the SAME pipeline an upload runs.
+
+    Additive: /api/analyze is untouched and its contract is unchanged. The
+    response here is that contract's shape plus a `source` object.
+
+    There is no analysis code in this path. Everything after the download is
+    the existing video pipeline, so a URL and an upload of the same clip give
+    the same verdict.
+    """
+    started = time.perf_counter()
+    workspace = Path(tempfile.mkdtemp(prefix="vidtrust_url_"))
+
+    try:
+        media_path, source = await run_in_threadpool(fetch_url, body.url, workspace)
+
+        try:
+            result = await run_in_threadpool(aggregator.analyze_video, str(media_path))
+        except VideoReadError as exc:
+            raise api_error(
+                "PROCESSING_FAILED",
+                f"The media downloaded but could not be read: {exc}",
+            ) from exc
+        except Exception as exc:
+            logger.exception("URL analysis failed for %s", source.get("platform"))
+            raise api_error(
+                "PROCESSING_FAILED",
+                f"Could not analyse the downloaded media: {type(exc).__name__}.",
+            ) from exc
+
+        # Provenance is always absent on this path, and the generic wording
+        # would understate why: the platform stripped it on upload. Absence of
+        # evidence here is the platform's doing, not a property of the media.
+        # This rewrites the detail string only -- the score and the
+        # availability flag are untouched, so the fusion is unaffected.
+        metadata_signal = result["signals"]["metadata"]
+        if not metadata_signal["available"]:
+            metadata_signal["detail"] = config.URL_METADATA_DETAIL.format(
+                platform=source.get("platform", "the platform")
+            )
+
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        payload = {
+            "id": uuid.uuid4().hex[:6],
+            "filename": source.get("title") or media_path.name,
+            "media_type": result["media_type"],
+            "verdict": result["verdict"],
+            "confidence": result["confidence"],
+            "processing_time_ms": elapsed_ms,
+            "signals": result["signals"],
+            "frames": result["frames"],
+            "source": source,
+        }
+        logger.info(
+            "url %s (%s) -> %s (%.2f) in %dms",
+            source.get("platform"), source.get("title", "")[:50],
+            payload["verdict"], payload["confidence"], elapsed_ms,
+        )
+        return JSONResponse(content=payload)
+
+    except UrlError as exc:
+        raise api_error(exc.code, exc.message) from exc
+    finally:
+        # Same discipline as the upload path: the temp media never outlives
+        # the request, whatever happened.
+        shutil.rmtree(workspace, ignore_errors=True)

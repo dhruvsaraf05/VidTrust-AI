@@ -39,6 +39,27 @@ VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi"}
 ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
 # --------------------------------------------------------------------------
+# URL ingest (POST /api/analyze-url)
+# --------------------------------------------------------------------------
+# Limits are enforced before or during the fetch, never after: duration comes
+# from the metadata probe, height from the format selector, size from yt-dlp's
+# own abort, and the wall clock from a progress hook.
+URL_MAX_DURATION_S = 60      # matches the video pipeline's own 60-frame cap
+URL_MAX_HEIGHT = 720         # no reason to pull 4K to sample at 1 fps
+URL_FETCH_TIMEOUT_S = 30     # overall wall clock for the download
+URL_SOCKET_TIMEOUT_S = 10    # per-read timeout handed to yt-dlp
+
+# Platforms re-encode on upload, so provenance is stripped in transit for every
+# URL. The generic "no metadata found" wording understates that: it reads as
+# "we looked and there was nothing", when the truth is "the platform removed
+# it". This replaces the detail string on the URL path only.
+URL_METADATA_DETAIL = (
+    "Provenance stripped in transit: {platform} re-encodes on upload, "
+    "discarding EXIF/XMP/C2PA. Absence here is the platform's doing, "
+    "not evidence about the media."
+)
+
+# --------------------------------------------------------------------------
 # Model signal
 # --------------------------------------------------------------------------
 MODEL_PRIMARY = "Organika/sdxl-detector"

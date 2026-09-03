@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { MODES, analyze, health } from './api/client'
+import { MODES, analyze, analyzeUrl, health } from './api/client'
 import ErrorState from './components/ErrorState'
 import FrameTimeline from './components/FrameTimeline'
 import HealthIndicator from './components/HealthIndicator'
 import ModeToggle from './components/ModeToggle'
 import RawResponse from './components/RawResponse'
+import ThemeSwitcher from './components/ThemeSwitcher' // TEMPORARY
 import SignalLedger from './components/SignalLedger'
 import ThresholdTrack from './components/ThresholdTrack'
 import UploadZone from './components/UploadZone'
+import UrlZone from './components/UrlZone'
 import VerdictBlock from './components/VerdictBlock'
 import { DEFAULT_THRESHOLDS } from './lib/verdict'
 
 const MODE_KEY = 'vidtrust.mode'
+const SOURCE_KEY = 'vidtrust.source'
 
 export default function App() {
   const [mode, setMode] = useState(
@@ -23,6 +26,14 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [failure, setFailure] = useState(null)
   const [healthState, setHealthState] = useState(null)
+  // 'file' or 'url'. Both feed the identical result components.
+  const [inputMode, setInputMode] = useState(
+    () => localStorage.getItem(SOURCE_KEY) ?? 'file',
+  )
+
+  useEffect(() => {
+    localStorage.setItem(SOURCE_KEY, inputMode)
+  }, [inputMode])
 
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode)
@@ -53,13 +64,13 @@ export default function App() {
     setFailure(null)
   }, [])
 
-  async function handleAnalyze(file) {
+  async function runAnalysis(work) {
     setBusy(true)
     setProgress(null)
     setResult(null)
     setFailure(null)
 
-    const outcome = await analyze(file, { mode, onProgress: setProgress })
+    const outcome = await work()
 
     if (outcome.ok) {
       setResult(outcome.data)
@@ -69,6 +80,11 @@ export default function App() {
     }
     setBusy(false)
   }
+
+  const handleAnalyze = (file) =>
+    runAnalysis(() => analyze(file, { mode, onProgress: setProgress }))
+
+  const handleAnalyzeUrl = (url) => runAnalysis(() => analyzeUrl(url))
 
   return (
     <div className="min-h-screen">
@@ -85,17 +101,53 @@ export default function App() {
           <div className="flex items-center gap-5">
             <HealthIndicator mode={mode} state={healthState} />
             <ModeToggle mode={mode} onChange={setMode} disabled={busy} />
+            <ThemeSwitcher />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[960px] px-6 pt-10 pb-24">
-        <UploadZone
-          onAnalyze={handleAnalyze}
-          onFileSelected={handleFileSelected}
-          busy={busy}
-          progress={progress}
-        />
+        <div className="mb-5 flex items-center gap-0.5 rounded-[3px] border border-rule bg-panel p-0.5 w-fit">
+          {[
+            { value: 'file', label: 'Upload file' },
+            { value: 'url', label: 'Paste link' },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              disabled={busy}
+              aria-pressed={inputMode === tab.value}
+              onClick={() => {
+                setInputMode(tab.value)
+                handleFileSelected()
+              }}
+              className={[
+                'label cursor-pointer rounded-[2px] px-4 py-2 transition-colors disabled:cursor-not-allowed',
+                inputMode === tab.value
+                  ? 'bg-ink text-panel'
+                  : 'hover:text-ink disabled:hover:text-ink-2',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {inputMode === 'file' ? (
+          <UploadZone
+            onAnalyze={handleAnalyze}
+            onFileSelected={handleFileSelected}
+            busy={busy}
+            progress={progress}
+          />
+        ) : (
+          <UrlZone
+            onAnalyze={handleAnalyzeUrl}
+            onInputChanged={handleFileSelected}
+            busy={busy}
+            live={mode === MODES.LIVE}
+          />
+        )}
 
         {failure && <ErrorState code={failure.code} message={failure.message} />}
 
@@ -116,6 +168,15 @@ function ResultView({ result, thresholds }) {
           {result.filename}
         </p>
         <p className="label label-faint">
+          {result.source ? (
+            <>
+              {result.source.platform}
+              {result.source.duration_s != null && (
+                <> · <span className="fig">{result.source.duration_s}</span>s</>
+              )}{' '}
+              ·{' '}
+            </>
+          ) : null}
           {result.media_type} ·{' '}
           <span className="fig">{result.processing_time_ms}</span> ms · id{' '}
           <span className="fig">{result.id}</span>

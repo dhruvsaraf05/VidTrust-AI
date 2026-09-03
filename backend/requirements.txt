@@ -17,3 +17,6 @@ torch>=2.9
 
 # used by run_samples.py (already present transitively via huggingface-hub)
 httpx>=0.28
+
+# URL ingest (POST /api/analyze-url)
+yt-dlp>=2025.1.1
