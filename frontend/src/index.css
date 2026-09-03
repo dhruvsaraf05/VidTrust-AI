@@ -86,6 +86,43 @@
   --font-mono: 'Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
+/* ---------------------------------------------------------------------------
+   Dark mode.
+
+   Deliberately not near-black with an acid accent: the ground is a cool
+   neutral grey with visible warmth in the panels, the way a rack instrument's
+   fascia is grey rather than black. Verdict hues are lifted from their light
+   values to stay legible on a dark ground while keeping their printerly,
+   desaturated character -- still not saturated UI colours.
+
+   Applied via [data-theme='dark'] on <html>, set by ThemeToggle.jsx. Every
+   pair here passes WCAG AA against the background it actually renders on --
+   see scripts/check_contrast.py.
+--------------------------------------------------------------------------- */
+:root[data-theme='dark'] {
+  --color-paper: #16181b;
+  --color-panel: #1e2126;
+  --color-panel-sunk: #101215;
+
+  --color-ink: #e9ebee;
+  --color-ink-2: #a7aeb6;
+  --color-ink-3: #868d95;
+
+  --color-rule: #2f343a;
+  --color-rule-2: #464d55;
+
+  --color-accent: #7fa3cf;
+  --color-accent-hi: #a3c0e4;
+  --color-accent-tint: #232c37;
+
+  --color-crimson: #e8837a;
+  --color-crimson-tint: #2f1f1e;
+  --color-teal: #62c4ab;
+  --color-teal-tint: #15292a;
+  --color-ochre: #dcaa55;
+  --color-ochre-tint: #2b2318;
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -97,6 +134,7 @@
     font-family: var(--font-sans);
     font-size: 0.9375rem; /* 15px — nothing in this design goes under 13px */
     line-height: 1.55;
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
   /* Keyboard focus must always be visible. Colour never carries meaning
