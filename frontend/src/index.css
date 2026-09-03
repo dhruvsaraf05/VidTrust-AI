@@ -63,7 +63,7 @@
 
   --color-ink: #16171a;
   --color-ink-2: #55575c;
-  --color-ink-3: #8a8c90;
+  --color-ink-3: #676a6e;  /* darkened: #8a8c90 was 2.88:1 on the ground, under AA */
 
   --color-rule: #d8d5cf;
   --color-rule-2: #c3bfb7;

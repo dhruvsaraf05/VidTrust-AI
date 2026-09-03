@@ -108,3 +108,31 @@ export async function health() {
     return { ok: false, error: 'NETWORK_ERROR' }
   }
 }
+
+/**
+ * Analyse media at a URL. Same response shape as analyze(), plus a `source`
+ * object -- so every result component downstream works unchanged.
+ *
+ * Always calls the live backend: there is no fixture for this path, and
+ * inventing one would mean shipping a fabricated `source`.
+ */
+export async function analyzeUrl(url) {
+  try {
+    const response = await axios.post(
+      `${API_BASE}/api/analyze-url`,
+      { url },
+      { timeout: 0 },
+    )
+    return { ok: true, data: response.data }
+  } catch (error) {
+    const body = error.response?.data
+    if (body && typeof body.error === 'string') {
+      return { ok: false, error: body.error, message: body.message ?? '' }
+    }
+    return {
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: `Could not reach the backend at ${API_BASE}. Is it running?`,
+    }
+  }
+}
