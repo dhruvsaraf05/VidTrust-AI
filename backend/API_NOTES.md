@@ -72,8 +72,11 @@ returns it.
 ## Things the frontend should expect
 
 - `processing_time_ms` covers the whole request including upload spooling.
-  Images are ~300–450 ms; a 6-second video is ~1.8 s. A 60-second video will be
-  around 15–20 s on CPU — the upload UI needs a spinner, not a fixed timeout.
+  With the replacement classifier (a 744 MB SwinV2, CPU) images are **~4–6 s**;
+  a 6-frame clip ~19 s and a 13-frame clip ~47 s, measured 12 Sept 2026 on the
+  4-core demo laptop. A 60-frame clip extrapolates to 3.5–4 min and has not
+  been timed. The upload UI needs a spinner, not a fixed timeout. (The original
+  `Organika/sdxl-detector` answered an image in ~300–450 ms.)
 - `signals.*.detail` is free text meant to be shown to the user. It is not a
   stable enum; do not parse it.
 - `available: false` should render as "unavailable", never as a 0% bar. That

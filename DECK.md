@@ -29,7 +29,7 @@ Three independent signals → weighted average → verdict.
 
 | Signal | Weight | Evidence |
 |---|---|---|
-| Classifier | 0.60 | `Organika/sdxl-detector`, inference only |
+| Classifier | 0.60 | `haywoodsloan/ai-image-detector-deploy`, inference only |
 | Provenance | 0.25 | EXIF / XMP / C2PA fingerprints |
 | Frequency | 0.15 | FFT high-frequency energy ratio |
 
@@ -39,6 +39,12 @@ Three independent signals → weighted average → verdict.
 > signals are independent by design: a neural judgement, a document-metadata
 > lookup, and a spectral measurement. They can disagree, and when they do that
 > disagreement is visible rather than averaged away.
+>
+> If asked which classifier: it was swapped on 10 September. The original,
+> an SDXL-specific detector, scored genuine iPhone photos 0.998 "artificial"
+> — anti-correlated, not merely weak. Four candidates were scored on the same
+> labelled files by `quick_compare.py`; this one was 12/12. Every number on
+> the following slides was re-measured on it.
 
 ---
 
@@ -89,17 +95,17 @@ Metadata absent → classifier and frequency rescale from 0.60/0.15 to
 
 | | naive | normalised |
 |---|---|---|
-| accuracy | 0.6532 | **0.7302** |
-| precision | 0.6705 | **0.8112** |
-| recall | 0.6170 | 0.6170 |
-| ROC-AUC | 0.7918 | **0.8461** |
+| accuracy | 0.7595 | **0.8384** |
+| precision | 0.7107 | **0.8152** |
+| recall | 0.8731 | 0.8731 |
+| ROC-AUC | 0.9196 | **0.9487** |
 
 | configuration | naive AUC | norm AUC |
 |---|---|---|
-| full ensemble | 0.7918 | 0.8461 |
-| model only | 0.7064 | 0.7482 |
+| full ensemble | **0.9196** | **0.9487** |
+| model only | 0.8397 | 0.8947 |
 | metadata only | 0.5000 | 0.5000 |
-| frequency only | **0.9012** | **0.9129** |
+| frequency only | 0.9012 | 0.9129 |
 
 > Two things to say before anyone asks.
 >
@@ -111,7 +117,10 @@ Metadata absent → classifier and frequency rescale from 0.60/0.15 to
 > a second track.
 >
 > "Normalised" means every image was centre-cropped to 512×512 of native pixels
-> — see the next slide's note if asked why crop rather than resize.
+> — see the next slide's note if asked why crop rather than resize. Recall is
+> identical in both conditions because the generated images are natively 512
+> and the crop does not touch them; the whole gain is 31 fewer false alarms on
+> real photographs, which is what removing a resampling confound should do.
 
 ---
 
@@ -125,25 +134,38 @@ Metadata absent → classifier and frequency rescale from 0.60/0.15 to
 It fired more often on real images than generated ones. Invisible until
 measured.
 
-### (b) The ensemble is worse than its best component
+### (b) The ensemble now out-ranks every single signal — it did not before
 
-**frequency-only AUC 0.9129 · full ensemble 0.8461**
+**full ensemble AUC 0.9196 / 0.9487 · classifier alone 0.8397 / 0.8947 ·
+frequency alone 0.9012 / 0.9129**
 
-Weights are hand-chosen and unfitted. Reweighting would fit a confound.
+With the original classifier the ensemble was *worse* than frequency alone.
+Same weights, same fusion, same frequency code — only the classifier changed.
+
+We report these results as they are — no manual tuning of weights to hide the
+limitations.
 
 > On (a): every unit-level behaviour was correct — the scan found the string it
 > was told to find. The API returned well-formed responses. Only a labelled set
 > plus a per-signal dump could surface it. This is the argument for why
 > evaluation is not optional, and it is the strongest thing in the project.
 >
-> On (b): say it plainly, don't soften it. Then explain why we did *not* act on
-> it. The obvious explanation was resolution — real images are 1024², generated
-> are 512² — so we controlled for it, and frequency-only did not collapse; it
-> rose. That is a real finding. But a content confound remains: every real image
-> is an FFHQ face, and a 512 crop of a face is mostly smooth skin while the
-> generated images are detailed scenes. Smooth-versus-detailed is precisely what
-> an FFT ratio measures. Reweighting on that would optimise for FFHQ faces
-> against digital art.
+> On (b): say the reversal plainly. With the first classifier we reported that
+> the fused system was worse than its cheapest signal, and we did not touch the
+> weights to fix that. The classifier was replaced because it was anti-
+> correlated on real photographs, and with a classifier that ranks well on its
+> own the same unfitted weights now combine to something better than any
+> single signal. The weights did not become right; the heaviest input stopped
+> being wrong.
+>
+> The frequency caveat is unchanged. The obvious explanation for its strength
+> was resolution — real images are 1024², generated are 512² — so we
+> controlled for it, and frequency-only did not collapse; it rose. But a
+> content confound remains: every real image is an FFHQ face, and a 512 crop
+> of a face is mostly smooth skin while the generated images are detailed
+> scenes. Smooth-versus-detailed is precisely what an FFT ratio measures. The
+> ensemble's margin over the classifier alone comes through frequency, so it
+> inherits that caveat.
 
 ---
 
@@ -152,20 +174,34 @@ Weights are hand-chosen and unfitted. Reweighting would fit a confound.
 **Dataset (all three inflate the numbers):** zero EXIF · every real image is
 FFHQ · real 1024² vs generated 512², no overlap
 
-**Measured and declined:** threshold band 0.06 / 0.68 reaches held-out accuracy
-**0.8492** vs 0.6885 — costs 29 points of coverage. Not adopted.
+**Measured and declined:** band 0.10 / 0.82 reaches held-out accuracy
+**0.9664** vs 0.8342 but abstains on a quarter of inputs; a plain cut at 0.808
+reaches 0.8800 at full coverage. Neither adopted.
 
-**Generalisation boundary:** 6 of 50 generators never caught once. All ten worst
-errors are *AI called REAL*.
+**Where it fails now:** false alarms on real FFHQ portraits (39 of 200
+normalised) dominate. No generator is missed on every image; 29 of 50 are
+caught on all four.
 
-> The declined threshold is worth defending as a decision, not a gap. It
-> survives a proper selection/reporting split, so it is real — but it abstains
-> on 37% of inputs instead of 8%, and it is tuned to a confounded distribution
-> of faces versus art, which is not what the demo files look like.
+**Cost:** the replacement classifier is a 744 MB SwinV2 — ~4–6 s per image on
+CPU, ~47 s for a 13-frame clip.
+
+> The declined thresholds are worth defending as a decision, not a gap. Both
+> survive a proper selection/reporting split, so they are real. The band
+> abstains on 26% of inputs instead of under 1%. The single cut is the more
+> uncomfortable one: it says our hand-chosen 0.65 sits too low for this
+> classifier on FFHQ, at no coverage cost. We still left it, because it is
+> tuned to a confounded distribution of faces versus art, and on the
+> hand-collected files the current band makes no error. Tuning it would be
+> hiding a limitation rather than reporting one.
 >
-> The generator finding has a mechanism: the model is an *SDXL* detector. It
-> catches `sdxl-1-0-base` at 0.966 and misses small community fine-tunes and
-> textual inversions at near-zero. It detects what it was trained to detect.
+> The generator picture changed shape with the model. The old classifier was an
+> SDXL specialist — six generators never caught, with a mechanism. The new one
+> misses thinly and everywhere: worst case 2 of 4, no generator systematically.
+> Its cost moved to false alarms on real portraits, and that is measured on one
+> real-image source only — FFHQ.
+>
+> If the demo feels slow, say why: the new classifier is ten times heavier than
+> the old one, and the interface shows progress rather than pretending.
 
 ---
 
@@ -177,7 +213,11 @@ errors are *AI called REAL*.
 3. **Real C2PA parsing** — report the signing authority, not merely that a
    manifest exists
 4. **Video at scale** — Track A has no video; the frame path is barely measured
-5. **Broaden the classifier** beyond the SDXL family, or ensemble a second one
+5. **A fresh hand-collected set** that was not used to choose the classifier —
+   the current `samples/` chose it, so its perfect score is not evidence
+6. **Second classifier or a lighter one** — the SwinV2's per-image cost limits
+   video; ensemble a second model and re-run the same evaluation before
+   trusting either
 
 > The honest close: this system does not claim to detect all machine-generated
 > media, does not generalise to unseen generators without re-evaluation, and

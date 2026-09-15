@@ -270,7 +270,7 @@ function AboutPanel() {
                   <td className="py-2 pr-4 text-ink">Classifier</td>
                   <td className="fig py-2 pr-4">0.60</td>
                   <td className="py-2">
-                    <code className="fig text-[0.8125rem]">Organika/sdxl-detector</code>,
+                    <code className="fig text-[0.8125rem]">haywoodsloan/ai-image-detector-deploy</code>,
                     used as published — no training or fine-tuning
                   </td>
                 </tr>

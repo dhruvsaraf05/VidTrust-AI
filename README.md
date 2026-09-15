@@ -12,7 +12,7 @@ cannot run is removed from the average rather than scored as zero.
 
 | Signal | Weight | What it measures |
 |---|---|---|
-| Classifier | 0.60 | `Organika/sdxl-detector` AI-probability |
+| Classifier | 0.60 | `haywoodsloan/ai-image-detector-deploy` AI-probability |
 | Provenance | 0.25 | EXIF / XMP / C2PA generator fingerprints |
 | Frequency | 0.15 | FFT high-frequency energy ratio |
 
@@ -131,7 +131,14 @@ cd backend && .venv/Scripts/python ablation.py --report evaluation_report_public
 cd backend && .venv/Scripts/python failure_analysis.py --report evaluation_report_public_normalised.csv
 ```
 
-**5. Frequency calibration and the sample sweep:**
+**5. Classifier selection** (the head-to-head that chose the current model;
+inference only, uses weights already in the HuggingFace cache):
+
+```bash
+cd backend && .venv/Scripts/python quick_compare.py
+```
+
+**6. Frequency calibration and the sample sweep:**
 
 ```bash
 cd backend && .venv/Scripts/python calibrate_frequency.py samples/
@@ -224,3 +231,9 @@ Stated in full in [REPORT.md](REPORT.md). In brief:
 - Real C2PA manifest parsing is not implemented — detection is a bounded
   raw-byte scan for markers plus EXIF text tags.
 - Clips longer than 60 seconds are analysed over their first 60 seconds.
+- The classifier is a 744 MB SwinV2 running on CPU: measured **~4–6 s per
+  image** and ~47 s for a 13-frame clip on a 4-core laptop. The UI shows
+  progress rather than a timeout for exactly this reason.
+- The 13 hand-collected files in `samples/` chose the classifier
+  (`quick_compare.py`), so their perfect Track B result is a sanity check, not
+  an estimate.

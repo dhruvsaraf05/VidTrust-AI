@@ -121,7 +121,7 @@ the point of the design, not an implementation detail.
 
 | Signal | Key | Weight | What it measures |
 |---|---|---|---|
-| Classifier | `model` | 0.60 | `Organika/sdxl-detector` AI-probability |
+| Classifier | `model` | 0.60 | `haywoodsloan/ai-image-detector-deploy` AI-probability (fallback `Ateeqq/ai-vs-human-image-detector`) |
 | Provenance | `metadata` | 0.25 | EXIF/XMP/C2PA generator fingerprints |
 | Frequency | `frequency` | 0.15 | FFT high-frequency energy ratio |
 
@@ -132,8 +132,19 @@ Video is images over time: sample ~1 fps capped at 60 frames, run the
 classifier per frame, metadata once on the container, frequency on every 5th
 frame, then aggregate.
 
-**Weights and thresholds are hand-chosen and unfitted.** Deriving them from a
-labelled evaluation set is the current top-priority work item (see the PRD).
+**Weights and thresholds are hand-chosen and unfitted.** They were measured
+(REPORT.md §4.3, §8) and deliberately left alone: better operating points
+exist on the public set and were declined because they are fitted to that
+set's confounds. Do not move them to make a table look better.
+
+**The classifier was swapped on 10 Sept 2026.** `Organika/sdxl-detector` was
+measured anti-correlated on the hand-collected files (5/12 correct, real iPhone
+photos scored 0.998 "artificial") and replaced by
+`haywoodsloan/ai-image-detector-deploy`, chosen by `backend/quick_compare.py`
+(12/12 on the same files). Every Track A figure was re-measured on the
+replacement; the old 0.7918 / 0.8461 AUCs must not be quoted anywhere except
+as labelled history. Consequence: `samples/` is now the model-selection set as
+well as the demo set — its perfect Track B score is not evidence.
 
 ---
 
@@ -189,7 +200,7 @@ tell Dhruv first.
   "processing_time_ms": 1420,
   "signals": {
     "model":     { "name": "Classifier", "score": 0.91, "weight": 0.6,
-                   "detail": "sdxl-detector", "available": true },
+                   "detail": "haywoodsloan/ai-image-detector-deploy", "available": true },
     "metadata":  { "name": "Provenance", "score": 1.0, "weight": 0.25,
                    "detail": "C2PA manifest found: Midjourney v6", "available": true },
     "frequency": { "name": "Frequency analysis", "score": 0.64, "weight": 0.15,
@@ -217,9 +228,12 @@ The frontend must branch on the `error` field, **not** on `res.status`.
 `GET /api/health` is additive: model status, configured weights and
 thresholds, size limit, accepted extensions.
 
-Timing to design UI around: images ~300–450 ms, a 6-second video ~1.8 s, a
-60-second video 15–20 s on CPU. The upload UI needs a progress state, not a
-fixed timeout.
+Timing to design UI around (measured 12 Sept 2026 through the API on the
+4-core demo laptop, replacement classifier, CPU): **images ~4–6 s**, a 6-frame
+clip ~19 s, a 13-frame clip ~47 s. A 60-frame clip extrapolates to 3.5–4 min
+and has not been timed. The replacement is a 744 MB SwinV2 — an order of
+magnitude slower than the original model's ~300–450 ms per image. The upload
+UI needs a progress state, not a fixed timeout.
 
 ---
 
@@ -239,6 +253,7 @@ fixed timeout.
 - Clips longer than 60 seconds are analysed over the first 60 seconds only.
   The response says so.
 - Weights and thresholds are hand-chosen.
+- Inference is slow on CPU with the replacement classifier (see §7 timing).
 - `samples/_smoke_*` files prove the pipeline runs. They say nothing about
   accuracy and must never appear in a demo or report.
 
@@ -246,10 +261,23 @@ fixed timeout.
 
 ## 9. Current state
 
-Backend stages 1–5 complete and verified on `feat/backend`: images, video, all
-three detectors, all reachable error paths, sample harness.
+Everything in the PRD is built and on `feat/palette-and-url` (which also
+carries the frontend, URL ingest and the model swap): backend, frontend,
+evaluation set builder, `evaluate.py` (two tracks, optional centre-crop
+normalisation), `ablation.py` (D6/D7), `failure_analysis.py` (D8),
+`quick_compare.py` (model selection), REPORT.md, DECK.md and the PPT.
 
-Outstanding: real samples collected and labelled, frequency calibration run,
-the evaluation set and `evaluate.py`, the ablation study, and the frontend.
+All evaluation outputs were regenerated on the replacement classifier on
+11–12 Sept 2026 (`evaluation_report_public{,_normalised}.csv`,
+`evaluation_report_samples.csv`, `ablation.json`, `failure_analysis.json`,
+`samples_report.{json,csv}`). REPORT.md §4, §8, §9, §10 and §11 describe those
+runs; DECK.md and the PPT quote them.
 
-See `PRD_DEMO_SEPT_3.md` for what those mean and when they're due.
+`main` holds the same four frontend commits under different SHAs (GitHub
+rebase-merge); merging `feat/palette-and-url` into it is conflict-free.
+
+Still open: fit the weights on a content- and resolution-matched set, a fresh
+hand-collected set that was not used to choose the model, HEIC ingest
+(contract change — ask first), and the inference cost of the new classifier.
+
+See `PRD_DEMO_SEPT_3.md` for the original milestone definition.

@@ -1,7 +1,7 @@
 """Score several pretrained detectors over the labelled sets, for model choice.
 
 Inference only -- nothing here trains or fine-tunes anything. It exists
-because the shipped classifier (Organika/sdxl-detector) is an SDXL-specific
+because the original classifier (Organika/sdxl-detector) is an SDXL-specific
 detector, and on real-world files it is close to anti-correlated: it scored
 genuine iPhone photographs at 0.998 "artificial" and Gemini-generated images
 at 0.003.
@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 import config
 
 CANDIDATES = [
-    "Organika/sdxl-detector",                        # current, the baseline
+    "Organika/sdxl-detector",                        # original choice, replaced 10 Sept
     "Ateeqq/ai-vs-human-image-detector",
     "dima806/ai_vs_real_image_detection",
     "dima806/ai_vs_human_generated_image_detection",
