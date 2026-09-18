@@ -10,7 +10,7 @@
       "name": "Classifier",
       "score": 0.0006,
       "weight": 0.6,
-      "detail": "Organika/sdxl-detector",
+      "detail": "haywoodsloan/ai-image-detector-deploy",
       "available": true
     },
     "metadata": {

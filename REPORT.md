@@ -35,7 +35,7 @@ Three signals, deliberately independent in the evidence they use:
 
 | Signal | Key | Weight | Evidence |
 |---|---|---|---|
-| Classifier | `model` | 0.60 | `Organika/sdxl-detector`, inference only, no fine-tuning |
+| Classifier | `model` | 0.60 | `haywoodsloan/ai-image-detector-deploy` (SwinV2), inference only, no fine-tuning; fallback `Ateeqq/ai-vs-human-image-detector` |
 | Provenance | `metadata` | 0.25 | EXIF / XMP / C2PA generator fingerprints |
 | Frequency | `frequency` | 0.15 | FFT high-frequency energy ratio |
 
@@ -63,6 +63,37 @@ reading in either direction.
 `UNCERTAIN` is a first-class outcome, not a hedge. It means the system declines
 to answer, and throughout this report it is counted separately from correct and
 incorrect rather than forced into a confusion matrix.
+
+### The classifier was replaced on 10 September — by measurement
+
+The original classifier, `Organika/sdxl-detector`, was not merely weak on
+real-world files but **anti-correlated**: it scored genuine iPhone originals in
+`samples/` at 0.998 "artificial" and a Gemini-generated image at 0.003. No
+weight or threshold can repair a signal pointing the wrong way, so the model was
+swapped rather than the fusion tuned around it.
+
+The replacement was chosen by `quick_compare.py`, which scores every cached
+candidate over the same 12 labelled sample images (4 generated,
+8 real), inference only:
+
+| candidate | correct at 0.5 | mean score, generated | mean score, real | generated caught |
+|---|---|---|---|---|
+| `haywoodsloan/ai-image-detector-deploy` | 12/12 | 0.987 | 0.002 | 4/4 |
+| `Ateeqq/ai-vs-human-image-detector` | 11/12 | 0.752 | 0.001 | 3/4 |
+| `dima806/ai_vs_human_generated_image_detection` | 8/12 | 0.012 | 0.011 | 0/4 |
+| `Organika/sdxl-detector` | 5/12 | 0.438 | 0.574 | 2/4 |
+| `dima806/ai_vs_real_image_detection` | 4/12 | 0.766 | 0.694 | 4/4 |
+
+`haywoodsloan/ai-image-detector-deploy` is a SwinV2 (744 MB) with the label
+vocabulary `artificial` / `real`; the fallback's labels are `ai` / `hum`. Both
+are used exactly as published. **Every Track A figure below was re-measured on
+the replacement**; nothing from the original classifier's runs is carried
+forward except where it is explicitly labelled as history.
+
+One consequence must be stated now rather than discovered later: the twelve
+images that chose the model are twelve of Track B's thirteen labelled files.
+Track B is therefore the model-selection set as well as the demo set, and §9
+treats it accordingly.
 
 ## 3. Evaluation methodology
 
@@ -92,11 +123,13 @@ stratified by class and seeded. A threshold picked on the same rows it is then
 scored against is fitted to those rows, and the resulting number estimates
 nothing.
 
-This was not a formality. An earlier threshold search over all 400 rows at once
-suggested a single cut near 0.06 lifting accuracy to roughly 0.73. Under a
-proper split on the same (naive) data the selection half chose a completely
-different cut, 0.806, which reached only 0.6850 on the held-out half. The
-apparent gain was an artefact of choosing and reporting on the same data.
+This was not a formality. With the original classifier, a threshold search
+over all 400 rows at once suggested a single cut near 0.06 lifting accuracy to
+roughly 0.73; under a proper split on the same data the selection half chose a
+completely different cut, 0.806, which reached only 0.6850 on the held-out
+half. The apparent gain was an artefact of choosing and reporting on the same
+data. (Those two figures describe the replaced model and are kept only as the
+methodological lesson; the current model's split is in §4.3.)
 
 ## 4. Track A results
 
@@ -104,24 +137,37 @@ apparent gain was an artefact of choosing and reporting on the same data.
 
 | | naive | **normalised** |
 |---|---|---|
-| accuracy | 0.6532 | **0.7302** |
-| precision | 0.6705 | **0.8112** |
-| recall | 0.6170 | 0.6170 |
-| F1 | 0.6427 | **0.7009** |
-| ROC-AUC | 0.7918 | **0.8461** |
-| coverage | 0.930 | 0.9175 |
-| abstained | 28 | 33 |
+| accuracy | 0.7595 | **0.8384** |
+| precision | 0.7107 | **0.8152** |
+| recall | 0.8731 | 0.8731 |
+| F1 | 0.7836 | **0.8431** |
+| ROC-AUC | 0.9196 | **0.9487** |
+| coverage | 0.9875 | 0.9900 |
+| abstained | 5 | 4 |
 
-Confusion matrix, normalised condition, positive class = AI, 33 abstentions
+Confusion matrix, normalised condition, positive class = AI, 4 abstentions
 excluded:
 
 | | predicted AI | predicted REAL |
 |---|---|---|
-| **actual AI** | 116 | 72 |
-| **actual REAL** | 27 | 152 |
+| **actual AI** | 172 | 25 |
+| **actual REAL** | 39 | 160 |
 
 Signal availability across all 400: model 400, **metadata 0**, frequency 400.
 Every run is therefore "degraded" by definition.
+
+Recall is identical in both conditions — 172 caught, 25 missed — and that is
+not a coincidence. Generated images in this set are natively 512×512, so the
+512 centre crop leaves them untouched (the per-image classifier and frequency
+scores are byte-identical across the two CSVs for all 200). Only the real
+images, cropped from 1024², change. **The entire normalised gain is 31 fewer
+false positives on real photographs**, which is exactly what removing the
+resampling confound should do if the confound was inflating the real side.
+
+The error profile is the mirror image of the original classifier's: precision
+now trails recall. The system's characteristic mistake is calling a real FFHQ
+portrait generated (70 naive, 39 normalised), not letting a generated image
+through.
 
 ### 4.2 Ablation
 
@@ -132,12 +178,12 @@ being unavailable at runtime.
 
 | configuration | naive acc | naive AUC | norm acc | norm AUC |
 |---|---|---|---|---|
-| full ensemble | 0.6532 | 0.7918 | 0.7302 | 0.8461 |
-| model only | 0.6464 | 0.7064 | 0.7135 | 0.7482 |
+| full ensemble | 0.7595 | **0.9196** | 0.8384 | **0.9487** |
+| model only | 0.7563 | 0.8397 | 0.8367 | 0.8947 |
 | metadata only | — | 0.5000 | — | 0.5000 |
 | frequency only | 0.7194 | 0.9012 | 0.7177 | 0.9129 |
-| ensemble − metadata | 0.6532 | 0.7918 | 0.7302 | 0.8461 |
-| ensemble − frequency | 0.6464 | 0.7064 | 0.7135 | 0.7482 |
+| ensemble − metadata | 0.7595 | 0.9196 | 0.8384 | 0.9487 |
+| ensemble − frequency | 0.7563 | 0.8397 | 0.8367 | 0.8947 |
 
 **The table has six rows but only three distinct results.** Because metadata is
 available on 0 of 400 files, "ensemble − metadata" is arithmetically identical
@@ -159,26 +205,37 @@ generated images.
 
 | condition | operating point | chosen on selection | **on held-out half** | coverage (held-out) |
 |---|---|---|---|---|
-| naive | single cut 0.806 | 0.7150 | 0.6850 | 1.00 |
-| naive | band 0.06 / 0.70 | 0.7786 | 0.7681 | 0.69 |
-| naive | current 0.35 / 0.65 | — | 0.6170 | 0.94 |
-| normalised | single cut 0.060 | 0.7800 | 0.7500 | 1.00 |
-| normalised | band 0.06 / 0.68 | 0.8741 | **0.8492** | 0.63 |
-| normalised | current 0.35 / 0.65 | — | 0.6885 | 0.92 |
+| naive | single cut 0.808 | 0.8350 | 0.8650 | 1.00 |
+| naive | band 0.14 / 0.82 | 0.9220 | 0.9444 | 0.72 |
+| naive | current 0.35 / 0.65 | — | 0.7437 | 0.995 |
+| normalised | single cut 0.808 | 0.8700 | 0.8800 | 1.00 |
+| normalised | band 0.10 / 0.82 | 0.9586 | **0.9664** | 0.745 |
+| normalised | current 0.35 / 0.65 | — | 0.8342 | 0.995 |
 
-**The measured band was not adopted.** `config.py` still holds 0.35 / 0.65.
+**Neither measured operating point was adopted.** `config.py` still holds
+0.35 / 0.65.
 
-The result is real and survives the split: 0.8492 against 0.6885 on data never
-used to choose it. It was declined for two reasons. First, it costs **29 points
-of coverage** — abstaining on 37% of inputs instead of 8% — and a detector that
-declines to answer on more than a third of what it is shown is a different
-product, not a tuned one. Second, it is fitted to a score distribution shaped by
-the dataset confounds in §5, on a set of face photographs versus digital art,
-which is not what the demonstration inputs look like.
+Two things are visible in this table and both are stated rather than
+smoothed over. First, the band result is real and survives the split: 0.9664
+against 0.8342 on data never used to choose it. It was declined because it
+costs **25 points of coverage** — abstaining on a quarter of inputs instead of
+one in two hundred — and a detector that declines to answer on a quarter of what
+it is shown is a different product, not a tuned one.
 
-Adopting it would be trading a measurable gain on a confounded set for unknown
-behaviour on real inputs. The finding is recorded; the constants are not
-changed.
+Second, and new with this classifier: a plain single cut at 0.808 with **no
+abstention band at all** reaches 0.8650 / 0.8800 held-out at full coverage,
+against 0.7437 / 0.8342 for the current band. That is a coverage-free gain, and
+it says plainly that the hand-chosen 0.65 threshold sits too low for this
+classifier's score distribution: the real portraits it is unsure about fuse into
+the 0.65–0.80 range and are called generated. It was still not adopted, for the
+same reason as before — the cut is fitted to a score distribution shaped by the
+dataset confounds in §5, on a set of face photographs versus digital art, which
+is not what the demonstration inputs look like. On the 13 hand-collected files
+the current band makes no error (§9), so there is no field evidence yet that
+the threshold is wrong, only evidence that it is wrong on FFHQ.
+
+Both findings are recorded; the constants are not changed. Moving them would be
+tuning to hide a limitation instead of reporting it.
 
 ## 5. Dataset limitations
 
@@ -263,42 +320,46 @@ detected.
 documented in `config.py`: a signal that fires on a third of all real
 photographs is worse than one with a known blind spot.
 
-## 8. Named finding (b): the ensemble underperforms its best component
+## 8. Named finding (b): the ensemble now out-ranks its best component — it did not before
 
-Under normalisation, **frequency-only reaches AUC 0.9129 while the full fused
-ensemble reaches 0.8461.** The ensemble is worse than one of its own
-constituents, and that constituent carries the smallest weight in the fusion.
+With the replacement classifier the fused ensemble reaches **AUC 0.9196 naive
+and 0.9487 normalised**, against 0.9012 / 0.9129 for frequency alone and
+0.8397 / 0.8947 for the classifier alone. The ensemble beats every one of its
+constituents in both conditions.
 
-Stated plainly: on this dataset, the hand-chosen weights make the system worse
-than using its cheapest signal alone.
+**This is a reversal, and it should be read as one.** With the original
+classifier the same table read 0.7918 / 0.8461 for the ensemble against
+0.9012 / 0.9129 for frequency alone: the fused system was worse than its
+cheapest signal, the one carrying the smallest weight. That finding was
+reported at the time rather than tuned away, and the numbers are retained here
+as history so the reversal is visible. (They describe the replaced model; the
+current ones are in §4.2.)
 
-Two things follow, and they pull in opposite directions.
+**What changed and what did not.** The frequency signal is the same code on the
+same files and reports the same AUC in both eras — 0.9012 and 0.9129, to four
+places. The fusion rule and the weights are unchanged. Only the classifier
+moved. A classifier that ranks poorly on its own dragged a 0.60-weighted average
+below the frequency signal; one that ranks well combines with it to something
+better than either. The ensemble did not become good because it was tuned. It
+became good because its heaviest input stopped being wrong.
 
-**The weights are unfitted.** 0.60 / 0.25 / 0.15 were chosen by inspection
-before any measurement existed. There is no evidence behind them, they were
-never claimed to be optimal, and this result is what an unfitted prior looks
-like when it is finally measured.
+**The caveat on frequency stands unchanged.** Its discrimination on this set is
+not explained by resampling — under normalisation it rose rather than fell —
+but it still cannot be attributed to synthesis artefacts rather than subject
+matter. A 512×512 centre crop of a 1024×1024 FFHQ portrait is mostly smooth
+skin, and the generated images are whole detailed scenes; smooth-versus-detailed
+is precisely what an FFT ratio measures. Frequency-only precision of 1.000 at
+recall 0.324 is consistent with a signal that fires confidently on a visually
+distinct subset. The ensemble's margin over the classifier alone (+0.080 naive,
++0.054 normalised AUC) arrives through the frequency signal, so that margin
+inherits the same caveat.
 
-**But reweighting toward frequency would be fitting to a confound.** The
-resolution asymmetry of §5 was the obvious explanation, and it was tested: under
-normalisation, which removes the resampling difference entirely, frequency-only
-AUC did not collapse — it rose slightly, from 0.9012 to 0.9129. So resampling
-was not the cause.
-
-That is a genuine finding, and it is still not evidence that the frequency
-signal detects synthesis. A content confound remains, and the crop plausibly
-*intensified* it: a 512×512 centre crop of a 1024×1024 FFHQ portrait is mostly
-smooth skin, while the generated images are whole detailed scenes. Smooth versus
-detailed is exactly what an FFT high-frequency ratio measures. Frequency-only
-precision of 1.000 at recall 0.324 is consistent with a signal that fires
-confidently on a visually distinct subset rather than one that generalises.
-
-The honest position: the frequency signal's discrimination on this set is not
-explained by resampling, but cannot yet be attributed to synthesis artefacts
-rather than subject matter. Reweighting on this evidence would optimise the
-system for FFHQ faces against digital art. The weights are left unchanged and
-the question is put on the roadmap, where it needs a set with varied content at
-matched native resolution to settle.
+**The weights remain unfitted.** 0.60 / 0.25 / 0.15 were chosen by inspection
+before any measurement existed, and the fact that they now produce a better
+result than any single signal is not evidence that they are right — it is
+evidence that the classifier is now good enough for a prior of roughly this
+shape to help rather than hurt. Fitting them is still on the roadmap and still
+needs a set with varied content at matched native resolution.
 
 ---
 
@@ -313,12 +374,19 @@ sample size does not support.
 
 | outcome | count |
 |---|---|
-| decided | 8 |
-| abstained (UNCERTAIN) | 5 |
-| true positive (AI called AI) | 2 |
-| false negative (AI called REAL) | 1 |
-| false positive (REAL called AI) | 2 |
-| true negative (REAL called REAL) | 3 |
+| decided | 13 |
+| abstained (UNCERTAIN) | 0 |
+| true positive (AI called AI) | 4 |
+| false negative (AI called REAL) | 0 |
+| false positive (REAL called AI) | 0 |
+| true negative (REAL called REAL) | 9 |
+
+**A perfect column is expected here and is not evidence.** Twelve of these
+thirteen files are the images that `quick_compare.py` used to choose the
+classifier (§2); the thirteenth is the WhatsApp video. A model selected for
+scoring 12/12 on a set will score 12/12 on it. This track was never the
+accuracy measurement — Track A is — and after the model swap it is doubly
+disqualified from being one. What it still measures is provenance, below.
 
 ### Per-signal availability
 
@@ -338,83 +406,104 @@ demonstrate the stripping behaviour the design anticipates: the platform removes
 EXIF, the signal correctly reports *unavailable* rather than a low score, and
 the remaining weights renormalise.
 
-### The ensemble caught a classifier failure
+### What the model swap changed here
 
-The classifier is confidently wrong on real iPhone photographs. On `IMG_5019.jpg`
-— a genuine camera original — it returned **0.998**.
+With the original classifier this track held the report's clearest
+demonstration of the ensemble thesis. `IMG_5019.jpg`, a genuine iPhone
+original, was scored **0.998** by that classifier; camera EXIF at 0.000 and
+frequency at 0.091 pulled the fusion down to 0.613 — UNCERTAIN — where without
+provenance it would have fused to 0.817 and been called generated. Provenance
+converted a false positive into an abstention on three of the four camera
+originals, and the two WhatsApp images, with EXIF stripped in transit, got no
+such correction and were called generated at classifier scores up to 0.994.
 
-| signal | score | nominal weight |
-|---|---|---|
-| classifier | 0.998 | 0.60 |
-| provenance (camera EXIF) | 0.000 | 0.25 |
-| frequency | 0.091 | 0.15 |
+That behaviour is precisely why the classifier was replaced (§2). On the
+replacement the same file scores **0.006**, every camera original and every
+WhatsApp image fuses below 0.10, and there is no over-confident classifier left
+for provenance to correct. The demonstration no longer occurs on these files.
+The figures above are retained as history because they are the reason the
+model changed; they are reproducible by pointing `MODEL_PRIMARY` back at the
+original and re-running `evaluate.py --track samples`.
 
-Fused: `(0.998×0.60 + 0.000×0.25 + 0.091×0.15) / 1.00` = **0.613** →
-UNCERTAIN.
-
-Had provenance been unavailable, the same file would have fused to
-`(0.998×0.60 + 0.091×0.15) / 0.75` = **0.817** → AI_GENERATED, a confident false
-positive on a real photograph.
-
-**The provenance signal converted a false positive into an abstention on three
-of the four camera originals.** This is the ensemble thesis demonstrated rather
-than asserted: an independent signal pulled back an over-confident classifier.
-
-It also shows the limit. The WhatsApp images had their EXIF stripped, received
-no such correction, and produced two false positives — including one at
-classifier score 0.994. **When the platform strips provenance, the ensemble
-loses the signal that would have saved it.** That is the honest characterisation
-of where this system is weak in the field.
+The mechanism is unchanged and is still the design's answer to the field case
+this track exposed: **when a platform strips provenance, the ensemble loses the
+signal that would have saved it.** The WhatsApp files still show the stripping
+— metadata unavailable, weights renormalised to 0.80 / 0.20 — and are now
+decided correctly by the classifier alone. That is a better classifier
+covering for a missing signal, not the missing signal being any less missing.
 
 ## 10. Generator specialisation (D8)
 
-All ten worst misclassifications by margin, from the normalised run, are in the
-same direction: **AI called REAL**. The system's failures are misses, not false
-alarms — consistent with precision 0.8112 against recall 0.6170.
+Of the ten worst misclassifications by margin in the normalised run, nine are
+**AI called REAL** and one is **REAL called AI** — an FFHQ portrait at
+classifier score 0.998, fused 0.889. The misses are shallow: the deepest sits at
+fused confidence 0.040, a margin of 0.31 below the REAL threshold, and the
+tenth-worst at 0.157.
 
-Of 50 generators, **6 were never caught once** and 8 were caught every time.
-The split is not random:
+Of 50 generators, **none was missed on every image**, 29 were caught on all
+four, and the worst slip rate is 2 of 4 on seven generators:
 
-| caught every time | mean classifier score |
+| slipped 2 of 4 | mean classifier score |
 |---|---|
-| `bguisard/stable-diffusion-nano-2-1` | 0.994 |
-| `cgburgos/sdxl-1-0-base` | 0.966 |
-| `IDK-ab0ut/Yiffymix_v36` | 0.999 |
-| `Masagin/Deliberate` | 0.941 |
+| `danbochman/ccxl` | 0.547 |
+| `AACEE/textual_inversion_sksship` | 0.514 |
+| `aliyualisa/model` | 0.457 |
+| `nota-ai/bk-sdm-small` | 0.543 |
+| `selshiya/teapot` | 0.514 |
+| `bguisard/stable-diffusion-nano-2-1` | 0.646 |
+| `WarriorMama777/AbyssOrangeMix` | 0.571 |
 
-| never caught | mean classifier score |
-|---|---|
-| `aliyualisa/model` | 0.000 |
-| `KORguy/textual_inversion_shirt` | 0.008 |
-| `kalebanana/textual_inversion_mvtec` | 0.026 |
-| `VegaKH/Ultraskin` | 0.034 |
-| `naclbit/trinart_stable_diffusion_v2` | 0.059 |
-| `briannlongzhao/2` | 0.060 |
+**The error structure has changed shape, not just size.** With the original
+classifier, misses clustered by generator family — six generators were never
+caught, eight always were, and the split had a mechanism: an SDXL detector
+recognising SDXL-family output and passing SD 1.5-era fine-tunes and textual
+inversions as real at near-zero confidence. With the replacement, misses are
+thin and spread. No generator is systematically missed; the worst-slipping ones
+carry mean classifier scores of 0.46–0.65 rather than near zero, and three of
+them (`aliyualisa/model`, `nota-ai/bk-sdm-small`,
+`bguisard/stable-diffusion-nano-2-1`) were in the original model's
+never-caught list. That is the signature of a general-purpose detector
+operating near its margin on some images, not of a specialist outside its
+training family.
 
-The detector is `Organika/sdxl-detector`. It recognises SDXL and its close
-relatives almost perfectly, and misses small community fine-tunes, textual
-inversions and merges — several of them SD 1.5-era rather than SDXL. This is a
-**generalisation boundary with a mechanism behind it**, not an unexplained error
-rate: the classifier detects what it was trained to detect, and a generated
-image from outside that family passes as real with near-zero confidence.
+The cost moved to the other side. The classifier's false alarms on real
+portraits — 39 of 200 normalised, 70 naive — now dominate the error count and
+are the reason precision (0.8152) trails recall (0.8731). Every real image in
+this set is an FFHQ face, so this is a measurement of one real-image source
+only; how the classifier behaves on real photographs of anything else is not
+measured here. The four iPhone originals and four WhatsApp photographs in Track
+B, all scored below 0.01, are the only non-FFHQ real images it has been run on.
 
 Caveats: all 200 generated images are of a single architecture family
 (`LatDiff`), so no architecture-level comparison is possible; and with 4 images
-per generator, individual slip rates are coarse.
+per generator, individual slip rates are coarse — one image is 25 points.
 
 ## 11. Limitations and future work
 
 **Measured and unresolved**
 
-- Weights are unfitted, and §8 shows the ensemble underperforming its best
-  component. Resolving it needs an evaluation set with varied content at matched
+- Weights are unfitted. §8 shows them producing a better result than any
+  single signal with this classifier, which is not the same as showing they are
+  right. Fitting them needs an evaluation set with varied content at matched
   native resolution — the current set cannot distinguish a synthesis signal from
   a subject-matter one.
-- A better threshold band (0.06 / 0.68, held-out accuracy 0.8492) exists and was
-  declined; §4.3 gives the reasoning. Revisit once a less confounded set exists.
-- The classifier's generalisation boundary (§10) suggests the model signal
-  should be treated as a *detector of SDXL-family output*, not of
-  machine-generated media generally.
+- Two better operating points exist and were declined: a band (0.10 / 0.82,
+  held-out accuracy 0.9664 at coverage 0.745) and a plain single cut (0.808,
+  held-out 0.8800 at full coverage). §4.3 gives the reasoning; the second in
+  particular says the current 0.65 threshold is too low for this classifier on
+  FFHQ. Revisit once a less confounded set exists.
+- The classifier's dominant error is false alarms on real FFHQ portraits (§10),
+  measured on one real-image source. Its behaviour on real photographs of other
+  subjects rests on eight Track B files.
+- Track B is now the model-selection set as well as the demo set (§2, §9). A
+  fresh hand-collected set, not used to choose anything, is needed before any
+  hand-collected figure can be read as an estimate.
+- Inference cost. The replacement is a SwinV2 with 744 MB of weights. Measured
+  through the API on the demo laptop (4-core i5, CPU, threads capped at half):
+  **~4–6 s per image**, 18.8 s for a 6-frame clip, 46.6 s for a 13-frame clip.
+  A 60-frame clip extrapolates to roughly 3.5–4 minutes and has not been timed.
+  The original model answered an image in under half a second; the frontend's
+  progress state, not a timeout, is what makes the new cost survivable.
 
 **Implementation gaps**
 

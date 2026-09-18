@@ -62,8 +62,24 @@ URL_METADATA_DETAIL = (
 # --------------------------------------------------------------------------
 # Model signal
 # --------------------------------------------------------------------------
-MODEL_PRIMARY = "Organika/sdxl-detector"
-MODEL_FALLBACK = "umm-maybe/AI-image-detector"
+# Organika/sdxl-detector was the original choice and has been REPLACED. It is
+# an SDXL-specific detector, and measured on the hand-collected set it was not
+# merely weak but anti-correlated: mean score 0.438 on generated images against
+# 0.574 on real photographs, 5 of 12 correct. It scored genuine iPhone photos
+# at 0.998 "artificial" and a Gemini-generated image at 0.003. No threshold or
+# weight can repair a signal pointing the wrong way.
+#
+# Selected by measurement, not by model card -- see quick_compare.py, which
+# scores every candidate over the same labelled files:
+#
+#   haywoodsloan/ai-image-detector-deploy   12/12 correct, meanAI 0.987 / meanREAL 0.002
+#   Ateeqq/ai-vs-human-image-detector       11/12 correct, meanAI 0.752 / meanREAL 0.001
+#   dima806/ai_vs_real_image_detection       4/12 correct (fires on everything)
+#   Organika/sdxl-detector                   5/12 correct (anti-correlated)
+#
+# Both retained models are used as published: inference only, no fine-tuning.
+MODEL_PRIMARY = "haywoodsloan/ai-image-detector-deploy"
+MODEL_FALLBACK = "Ateeqq/ai-vs-human-image-detector"
 
 # Label vocabularies. HuggingFace image-classification heads report string
 # labels; we map them onto "probability this is machine-generated".
@@ -71,9 +87,13 @@ MODEL_FALLBACK = "umm-maybe/AI-image-detector"
 # mapped here. We cannot know which index means "AI" without checking the model
 # card, and guessing would silently invert the signal. An unrecognised
 # vocabulary makes the model signal report available: false instead.
+#
+# "hum" is the fallback model's own label for human-made, read from its
+# id2label -- not an abbreviation we invented.
 AI_LABELS = {"artificial", "ai", "ai_generated", "ai-generated", "fake",
              "generated", "machine", "sdxl", "synthetic"}
-REAL_LABELS = {"human", "real", "natural", "photo", "photograph", "authentic"}
+REAL_LABELS = {"human", "hum", "real", "natural", "photo", "photograph",
+               "authentic"}
 
 # --------------------------------------------------------------------------
 # Video sampling

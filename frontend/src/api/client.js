@@ -25,9 +25,10 @@ export const MODES = { MOCK: 'mock', LIVE: 'live' }
  * It is a client-side condition and is deliberately distinct from the five
  * contract codes.
  *
- * There is no request timeout. A 60-second video takes 15-20s on CPU, and a
- * fixed timeout would abort legitimate work. Progress is reported through
- * onProgress instead.
+ * There is no request timeout. With the current classifier an image takes
+ * 4-6s on CPU and a 13-frame clip ~47s, so a 60-frame clip can run for
+ * minutes; a fixed timeout would abort legitimate work. Progress is reported
+ * through onProgress instead.
  */
 export async function analyze(file, { mode = MODES.LIVE, onProgress } = {}) {
   if (mode === MODES.MOCK) {
