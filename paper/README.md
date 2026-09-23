@@ -1,25 +1,32 @@
 # IEEE paper draft
 
 `vidtrust_ieee.tex` — first full draft, IEEEtran conference format.
+`vidtrust_ieee.pdf` — compiled output, 7 pages.
 
-**Not yet compiled.** No TeX engine is installed on the development machine, so
-the source has been checked structurally (environments, braces, refs, citations,
-table column counts) but never run through LaTeX. Expect the usual first-build
-fixes: an overfull hbox or two, and figure placement.
+Builds clean: no errors, no undefined references or citations, no overfull
+boxes. Four underfull-hbox warnings remain (loose inter-word spacing in
+justified two-column text); they are cosmetic and normal for this class.
 
 ## Compile it
 
-Overleaf is the quickest path and needs no local install:
+Locally, with the MiKTeX install used for the committed PDF:
+
+```bash
+"C:\Users\HP\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" -interaction=nonstopmode vidtrust_ieee.tex
+```
+
+Run it **twice** so the cross-references resolve. On a first build MiKTeX
+fetches IEEEtran and the other packages from CTAN on demand, which takes a few
+minutes; after that it is seconds. There is no `.bib` — the bibliography is a
+`thebibliography` block inside the `.tex`.
+
+Overleaf works too and needs no local install:
 
 1. New Project → Upload Project → select `vidtrust_ieee.tex`,
    `fig1_architecture.pdf`, `fig2_roc.pdf`, `fig3_normalisation.pdf`
    (drag all four in; the `.tex` must be at the top level).
 2. Set the compiler to **pdfLaTeX** (Menu → Compiler) if it is not already.
 3. Recompile. IEEEtran ships with Overleaf, so nothing else is needed.
-
-Locally, with a TeX install: `pdflatex vidtrust_ieee && pdflatex vidtrust_ieee`
-(twice, so the cross-references resolve). There is no `.bib` — the bibliography
-is a `thebibliography` block inside the `.tex`.
 
 ## Regenerate the figures
 

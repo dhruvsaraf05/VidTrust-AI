@@ -18,7 +18,18 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{url}
+
+% HuggingFace model identifiers are long, unbroken strings containing slashes,
+% hyphens and underscores, and they overflow an IEEE column if set as ordinary
+% \texttt. \path sets them verbatim (so underscores need no escaping) and the
+% break list below lets them wrap, which keeps the full identifier in the table
+% rather than an abbreviation.
+\urlstyle{tt}
+\def\UrlBreaks{\do\/\do\-\do\_\do\.}
+\def\UrlBigBreaks{\do\/}
+\newcommand{\hfid}[1]{\path{#1}}
 \usepackage[hidelinks]{hyperref}
 \usepackage[T1]{fontenc}
 
@@ -379,16 +390,16 @@ dominates the choice of how to combine it.
 (4 generated, 8 real). Inference only; no fine-tuning.}
 \label{tab:models}
 \centering
-\small
-\begin{tabular}{@{}lccc@{}}
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.52in}ccc@{}}
 \toprule
-Model & Correct & Mean, gen. & Mean, real \\
+Model (HuggingFace identifier) & Correct & Mean, gen. & Mean, real \\
 \midrule
-\texttt{haywoodsloan/ai-image-detector-deploy} & 12/12 & 0.987 & 0.002 \\
-\texttt{Ateeqq/ai-vs-human-image-detector}     & 11/12 & 0.752 & 0.001 \\
-\texttt{dima806/ai\_vs\_human\_generated\_...} &  8/12 & 0.012 & 0.011 \\
-\texttt{Organika/sdxl-detector}                &  5/12 & 0.438 & 0.574 \\
-\texttt{dima806/ai\_vs\_real\_image\_detection}&  4/12 & 0.766 & 0.694 \\
+\hfid{haywoodsloan/ai-image-detector-deploy}     & 12/12 & 0.987 & 0.002 \\
+\hfid{Ateeqq/ai-vs-human-image-detector}         & 11/12 & 0.752 & 0.001 \\
+\hfid{dima806/ai_vs_human_generated_image_detection} & 8/12 & 0.012 & 0.011 \\
+\hfid{Organika/sdxl-detector}                    &  5/12 & 0.438 & 0.574 \\
+\hfid{dima806/ai_vs_real_image_detection}        &  4/12 & 0.766 & 0.694 \\
 \bottomrule
 \end{tabular}
 \end{table}

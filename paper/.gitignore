@@ -1,0 +1,14 @@
+# LaTeX build artifacts. The PDF itself is committed -- it is the draft that
+# gets circulated for review -- but everything pdflatex writes alongside it is
+# regenerated on every build.
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
