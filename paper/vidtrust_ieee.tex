@@ -58,18 +58,19 @@
 Fully synthetic images and video are now produced by hundreds of publicly
 available generators, and a detector that relies on any single cue fails
 whenever that cue is absent. We present VidTrust~AI, a detector that fuses
-three deliberately independent signals---a pretrained neural classifier,
+three deliberately independent signals: a pretrained neural classifier,
 provenance metadata (EXIF/XMP/C2PA), and a fast Fourier transform (FFT)
-high-frequency energy ratio---under an \emph{availability-aware} fusion rule:
-a signal that cannot run is removed from the weighted average and the
-remaining weights are renormalised, rather than being scored as zero. On a
+high-frequency energy ratio. They are combined by an
+\emph{availability-aware} fusion rule, under which a signal that cannot run
+is removed from the weighted average and the remaining weights are
+renormalised, rather than being scored as zero. On a
 400-image balanced subset of Community Forensics spanning 50 generators, the
 fused system reaches ROC-AUC 0.9196, against 0.8397 for the classifier alone
 and 0.9012 for the frequency signal alone. We further show that the standard
 evaluation protocol conflates synthesis artefacts with resampling history:
 under a centre-crop control that equalises processing history without
 interpolation, AUC rises to 0.9487 while recall is unchanged to four decimal
-places---the entire gain is a reduction in false positives on real
+places; the entire gain is a reduction in false positives on real
 photographs, from 70 to 39. We report two negative results that only
 per-signal logging exposed: a three-character provenance signature that fired
 at full confidence on 62 of 200 real photographs, and an earlier classifier
@@ -103,7 +104,7 @@ Detectors for this problem are commonly single-model
 classifiers~\cite{wang2020,ojha2023,corvi2023}. That design has a structural
 weakness that is easy to miss in benchmark numbers: it has exactly one way to
 be wrong, and nothing to check it against. An ensemble of independent signals
-can in principle cover that gap---but only if it handles the case that
+can in principle cover that gap, but only if it handles the case that
 motivates it. Provenance metadata is the strongest available evidence of
 synthetic origin when it is present, and it is absent from the great majority
 of media in circulation, because every social platform re-encodes on upload
@@ -215,8 +216,8 @@ measurement in Section~\ref{sec:selection}. It is loaded once at application
 start-up and never on the request path.
 
 \textbf{Provenance ($w=0.25$).} The file is inspected for two opposite kinds
-of evidence. A generator fingerprint---a known generator name in decoded EXIF
-or XMP text, or a C2PA/JUMBF manifest marker---yields score 1.0. Genuine
+of evidence. A generator fingerprint (a known generator name in decoded EXIF
+or XMP text, or a C2PA/JUMBF manifest marker) yields score 1.0. Genuine
 camera EXIF (\texttt{Make} and \texttt{Model} present, no generator string)
 yields 0.0. A file carrying neither makes the signal report
 \emph{unavailable}, which is the case that Section~\ref{sec:fusion} exists to
@@ -234,8 +235,8 @@ encode no measured boundary between generated and real. Section~\ref{sec:limits}
 reports the calibration measurement that keeps them labelled that way.
 
 The three signals were chosen to be independent in the \emph{evidence} they
-consult---a neural judgement about pixels, a document-metadata lookup, and a
-spectral statistic---so that they can disagree, and so that a failure mode of
+consult (a neural judgement about pixels, a document-metadata lookup, and a
+spectral statistic), so that they can disagree, and so that a failure mode of
 one is not automatically a failure mode of another.
 
 \subsection{Availability-aware fusion}
@@ -256,7 +257,7 @@ the weights renormalised, not over all signals with missing ones zeroed. The
 distinction is the central design decision of the system. A score of $0.0$
 means ``this looks real''; unavailability means ``no evidence either way''.
 Conflating them makes every file whose metadata was stripped drift toward a
-verdict of authentic---and stripping metadata is exactly what every social
+verdict of authentic, and stripping metadata is exactly what every social
 platform does on upload. Concretely, when provenance is absent the classifier
 and frequency weights rescale from $0.60/0.15$ to $0.80/0.20$ and decide
 between themselves.
@@ -276,7 +277,7 @@ matrix.
 
 \subsection{Degradation behaviour}
 
-A failure of the classifier---the heaviest signal---is not an error response.
+A failure of the classifier, the heaviest signal, is not an error response.
 The signal reports unavailable, \eqref{eq:fuse} renormalises, and the other
 two still produce a verdict. This follows from the same principle as the
 fusion rule: a partial answer with its provenance visible is more useful than
@@ -312,8 +313,8 @@ only place provenance does anything at all.
 Track~B carries a second disclosure. The 12 labelled images in it were the set
 used to select the classifier (Section~\ref{sec:selection}). It is therefore
 the model-selection set as well as the demonstration set, and its results are
-reported as counts and as a functional check on the provenance branches---never
-as an accuracy estimate.
+reported as counts and as a functional check on the provenance branches,
+never as an accuracy estimate.
 
 \subsection{Metrics and the treatment of abstention}
 
@@ -344,8 +345,8 @@ after a control we call \emph{resolution normalisation}.
 The confound is this. Real images in this set are natively $1024\times1024$
 and generated images natively $512\times512$, with no overlap. Every detector
 in the pipeline resizes to 512 internally, so under the naive protocol the
-real images arrive having been downsampled---which destroys high-frequency
-content---while the generated images arrive untouched. A frequency statistic
+real images arrive having been downsampled, which destroys high-frequency
+content, while the generated images arrive untouched. A frequency statistic
 can then separate the classes by measuring who was downsampled rather than who
 was synthesised.
 
@@ -459,9 +460,9 @@ distributions coincide exactly while the real distribution shifts toward zero.
 \centering
 \includegraphics[width=\columnwidth]{fig3_normalisation.pdf}
 \caption{Empirical CDF of the classifier score by class and condition,
-Track~A. The two generated curves coincide exactly---the centre crop does not
-touch a natively $512\times512$ image---while the real distribution moves
-toward zero under normalisation. The fraction of real images scoring above 0.5
+Track~A. The two generated curves coincide exactly, because the centre crop
+does not touch a natively $512\times512$ image, while the real distribution
+moves toward zero under normalisation. The fraction of real images scoring above 0.5
 falls from 72/200 to 40/200.}
 \label{fig:normal}
 \end{figure}
@@ -493,7 +494,7 @@ Configuration & Acc. & AUC & Acc. & AUC \\
 \midrule
 Full ensemble          & 0.7595 & \textbf{0.9196} & 0.8384 & \textbf{0.9487} \\
 Classifier only        & 0.7563 & 0.8397 & 0.8367 & 0.8947 \\
-Provenance only        & ---    & 0.5000 & ---    & 0.5000 \\
+Provenance only        & n/a    & 0.5000 & n/a    & 0.5000 \\
 Frequency only         & 0.7194 & 0.9012 & 0.7177 & 0.9129 \\
 $-$ Provenance$^\dagger$ & 0.7595 & 0.9196 & 0.8384 & 0.9487 \\
 $-$ Frequency$^\dagger$  & 0.7563 & 0.8397 & 0.8367 & 0.8947 \\
@@ -516,7 +517,7 @@ and the AUC of 0.5000 is the definition of a constant predictor.
 
 \textbf{The frequency signal is extremely lopsided}: precision 1.0000 at
 recall 0.3237 in both conditions. It never produces a false positive on this
-set and catches roughly a third of generated images---the profile of a signal
+set and catches roughly a third of generated images, the profile of a signal
 that fires confidently on a visually distinct subset rather than one that
 generalises.
 
@@ -539,18 +540,18 @@ Cond. & Operating point & Sel. acc. & \textbf{Held-out} & Cov. \\
 \midrule
 naive & single cut 0.808      & 0.8350 & 0.8650 & 1.000 \\
 naive & band 0.14\,/\,0.82    & 0.9220 & 0.9444 & 0.720 \\
-naive & \emph{current} 0.35\,/\,0.65 & --- & 0.7437 & 0.995 \\
+naive & \emph{current} 0.35\,/\,0.65 & n/a & 0.7437 & 0.995 \\
 norm. & single cut 0.808      & 0.8700 & 0.8800 & 1.000 \\
 norm. & band 0.10\,/\,0.82    & 0.9586 & \textbf{0.9664} & 0.745 \\
-norm. & \emph{current} 0.35\,/\,0.65 & --- & 0.8342 & 0.995 \\
+norm. & \emph{current} 0.35\,/\,0.65 & n/a & 0.8342 & 0.995 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Both measured operating points survive the selection/reporting split, and
 neither was adopted. The band improves held-out accuracy from 0.8342 to 0.9664
-but costs 25 points of coverage---abstaining on a quarter of inputs instead of
-one in two hundred---which is a different product, not a tuned one. The single
+but costs 25 points of coverage, abstaining on a quarter of inputs instead of
+one in two hundred. That is a different product, not a tuned one. The single
 cut is the more uncomfortable result: it improves held-out accuracy at
 \emph{no} coverage cost, and says plainly that the hand-chosen 0.65 threshold
 sits too low for this classifier's score distribution, because the real
@@ -558,8 +559,8 @@ portraits it is unsure about fuse into the 0.65--0.80 range and are called
 generated.
 
 We declined both because they are fitted to a score distribution shaped by the
-dataset confounds of Section~\ref{sec:limits}---face photographs versus
-digital art---which is not what the intended inputs look like, and because on
+dataset confounds of Section~\ref{sec:limits} (face photographs versus
+digital art), which is not what the intended inputs look like, and because on
 the 13 hand-collected files the current band makes no error. There is
 therefore evidence that the threshold is wrong \emph{on FFHQ}, and no field
 evidence that it is wrong in general. Adopting it would trade a measurable
@@ -570,16 +571,16 @@ recorded; the constants are unchanged.
 
 Of 50 generators, none was missed on every one of its four images, 29 were
 caught on all four, and the worst slip rate is 2 of 4 on seven generators
-whose mean classifier scores lie between 0.457 and 0.646---near the decision
+whose mean classifier scores lie between 0.457 and 0.646, near the decision
 boundary rather than at zero. Nine of the ten worst misclassifications by
 margin are generated images called real; the tenth is an FFHQ portrait scored
 0.998 by the classifier and fused to 0.889.
 
 This error structure differs qualitatively from that of the original
 classifier, under which six generators were never caught once and eight always
-were---a split with a clear mechanism, namely an SDXL-specific detector
-recognising SDXL-family output and passing SD~1.5-era fine-tunes and textual
-inversions at near-zero confidence. The replacement misses thinly and
+were, a split with a clear mechanism: an SDXL-specific detector recognising
+SDXL-family output and passing SD~1.5-era fine-tunes and textual inversions
+at near-zero confidence. The replacement misses thinly and
 everywhere instead, which is the signature of a general-purpose detector
 operating near its margin rather than of a specialist outside its training
 family.
@@ -596,11 +597,11 @@ rather than only the fused verdict.
 
 \subsection{A three-character string inverted the provenance signal}
 
-The generator signature list contained the string \texttt{"veo"}---three
-characters. In a few hundred kilobytes of compressed image data, a
+The generator signature list contained the string \texttt{"veo"}, three
+characters long. In a few hundred kilobytes of compressed image data, a
 three-character case-insensitive byte sequence occurs by chance with high
 probability. The provenance signal consequently reported ``generator signature
-found'' at score 1.0---full confidence---on \textbf{62 of 200 real
+found'' at full confidence (score 1.0) on \textbf{62 of 200 real
 photographs} (31.0\%), and across the set fired on 65 real images against 23
 generated ones. The signal intended to prove synthetic origin was firing more
 often on real photographs than on generated ones, and contributing a quarter
@@ -609,20 +610,20 @@ of the fused weight toward \texttt{AI\_GENERATED} every time it did.
 Three aspects are worth drawing out. First, every unit-level behaviour was
 correct: the scan found the string it was asked to find, the API returned
 well-formed responses, and the detail string was plausible. Second, the fix is
-a separation of concerns rather than a deletion---signature matching now uses
+a separation of concerns rather than a deletion: signature matching now uses
 the full list for decoded EXIF and XMP text, where a short generator name is a
 word, and a strict list requiring six or more characters plus structural C2PA
 box markers for raw binary. Verified afterwards on the same 200 real images:
 0 false positives. Third, the fix has a stated cost: a video whose only
 evidence is the bare string ``sora'' in its container is no longer detected.
-That trade is deliberate---a signal that fires on a third of all real
+That trade is deliberate: a signal that fires on a third of all real
 photographs is worse than one with a known blind spot.
 
 \subsection{The ensemble once ranked below its lowest-weighted component}
 
 With the original classifier, the fused ensemble reached AUC 0.7918 naive and
-0.8461 normalised while frequency alone---carrying the smallest weight,
-0.15---reached 0.9012 and 0.9129. The fused system was worse than its cheapest
+0.8461 normalised while frequency alone, carrying the smallest weight of
+0.15, reached 0.9012 and 0.9129. The fused system was worse than its cheapest
 constituent. We reported that result rather than reweighting, because
 reweighting toward frequency on this dataset would have been fitting to the
 content confound of Section~\ref{sec:limits}.
@@ -647,7 +648,7 @@ component, and an ablation table is what makes that visible.
 
 \textbf{Dataset confounds.} Three properties of Track~A inflate its numbers.
 (i)~Zero EXIF across all 400 images, so provenance is structurally dead.
-(ii)~Every real image is an FFHQ face---aligned, centred portraits---while the
+(ii)~Every real image is an FFHQ face (aligned, centred portraits), while the
 generated half is varied digital art, illustration and photography, so a
 detector can separate the classes partly on subject matter. (iii)~The
 resolution asymmetry of Section~\ref{sec:normal}, which the normalised
@@ -657,8 +658,8 @@ condition controls. Together these make Track~A's figures an upper bound.
 are unfitted, and a calibration run over the hand-collected files gives raw
 ratios of 0.0394--0.3251 with the real files spanning 0.0499--0.2357 and the
 generated files 0.1101--0.3251: substantially overlapping ranges. Its
-discrimination on Track~A is not explained by resampling---under normalisation
-it rose rather than fell, 0.9012 to 0.9129---but it cannot yet be attributed
+discrimination on Track~A is not explained by resampling (under normalisation
+it rose rather than fell, 0.9012 to 0.9129), but it cannot yet be attributed
 to synthesis artefacts rather than to subject matter, and the centre crop
 plausibly intensified the content confound, since a $512^2$ crop of an FFHQ
 portrait is mostly smooth skin while the generated images are detailed scenes.
