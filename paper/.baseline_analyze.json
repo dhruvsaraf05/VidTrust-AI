@@ -1,0 +1,60 @@
+{
+  "samples/ChatGPT Image Aug 31, 2026, 09_56_45 PM.png": {
+    "confidence": 0.8434,
+    "frames": null,
+    "media_type": "image",
+    "signals": {
+      "frequency": {
+        "available": true,
+        "detail": "Low high-frequency energy (ratio 0.110, provisional scale)",
+        "name": "Frequency analysis",
+        "score": 0.1502,
+        "weight": 0.15
+      },
+      "metadata": {
+        "available": true,
+        "detail": "Generator signature found: openai (raw scan)",
+        "name": "Provenance",
+        "score": 1.0,
+        "weight": 0.25
+      },
+      "model": {
+        "available": true,
+        "detail": "haywoodsloan/ai-image-detector-deploy",
+        "name": "Classifier",
+        "score": 0.9514,
+        "weight": 0.6
+      }
+    },
+    "verdict": "AI_GENERATED"
+  },
+  "samples/IMG_5019.jpg": {
+    "confidence": 0.0174,
+    "frames": null,
+    "media_type": "image",
+    "signals": {
+      "frequency": {
+        "available": true,
+        "detail": "Low high-frequency energy (ratio 0.086, provisional scale)",
+        "name": "Frequency analysis",
+        "score": 0.0909,
+        "weight": 0.15
+      },
+      "metadata": {
+        "available": true,
+        "detail": "Camera EXIF present (Make/Model), no generator signature",
+        "name": "Provenance",
+        "score": 0.0,
+        "weight": 0.25
+      },
+      "model": {
+        "available": true,
+        "detail": "haywoodsloan/ai-image-detector-deploy",
+        "name": "Classifier",
+        "score": 0.0062,
+        "weight": 0.6
+      }
+    },
+    "verdict": "LIKELY_REAL"
+  }
+}

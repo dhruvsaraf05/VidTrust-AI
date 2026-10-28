@@ -52,7 +52,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from PIL import Image
+
 import config
+import perturbations
 from detectors import model_detector
 from pipeline import aggregator
 
@@ -73,9 +76,14 @@ TRACKS = {
     },
 }
 
-# Per-file cost on CPU, from the measured timings in API_NOTES.md. Used only
-# for the up-front estimate; the live ETA replaces it after a few files.
-SECONDS_PER_IMAGE = 0.4
+# Per-file cost on CPU. Used only for the up-front estimate; the live ETA
+# replaces it after a few files.
+#
+# Measured from the runs' own elapsed_seconds, not from API_NOTES.md: the naive
+# public pass did 400 files in 517.6 s (1.29 s/file) and the normalised pass in
+# 850.7 s (2.13 s/file). The old value of 0.4 predated the classifier swap and
+# was 4x optimistic, which made a 40-minute sweep look like it had hung.
+SECONDS_PER_IMAGE = 1.6
 SECONDS_PER_VIDEO = 3.0
 
 
@@ -120,10 +128,61 @@ def safe_divide(numerator: float, denominator: float) -> float | None:
 # ---------------------------------------------------------------------------
 CROP_SIZE = 512
 NORMALISED_DIRNAME = "_normalised"
+PERTURBED_DIRNAME = "_perturbed"
 
 
-def normalise_image(source: Path, out_dir: Path) -> tuple[Path, str]:
-    """Centre-crop to CROP_SIZE x CROP_SIZE of NATIVE pixels. No resampling.
+def condition_name(normalise: str, perturb: str) -> str:
+    """Stable name for a (normalisation, perturbation) pair.
+
+    The two legacy conditions keep the names they already have on disk, because
+    ablation.json, paper/audit_numbers.py and every committed figure refer to
+    them:
+
+        none / none   -> ""            evaluation_report_public.csv
+        crop / none   -> "_normalised" evaluation_report_public_normalised.csv
+
+    Anything with a perturbation gets an explicit arm prefix, so a filename says
+    which arm it came from and the two can never be confused in a table:
+
+        crop / jpeg50 -> "_crop_jpeg50"
+        none / jpeg50 -> "_native_jpeg50"
+    """
+    if perturb == "none":
+        return "_normalised" if normalise == "crop" else ""
+    return f"_{'crop' if normalise == 'crop' else 'native'}_{perturb}"
+
+
+def _crop_native(image: Image.Image, size: int) -> tuple[Image.Image, str]:
+    """The centre crop itself, split out so a perturbation can follow it."""
+    note = ""
+    width, height = image.size
+
+    if width < size or height < size:
+        scale = size / min(width, height)
+        image = image.resize(
+            (max(size, round(width * scale)), max(size, round(height * scale))),
+            Image.LANCZOS,
+        )
+        width, height = image.size
+        note = "upscaled"
+
+    left = (width - size) // 2
+    top = (height - size) // 2
+    return image.crop((left, top, left + size, top + size)), note
+
+
+def prepare_image(source: Path, out_dir: Path, *, normalise: str = "none",
+                  perturb: str = "none") -> tuple[Path, str]:
+    """Crop, then perturb, then write a lossless PNG. Returns (path, note).
+
+    ORDER IS CROP THEN PERTURB, and it matters: JPEG-of-crop and crop-of-JPEG
+    differ, for JPEG by whether the 8x8 block grid aligns to the crop origin.
+    The order is recorded in the metrics JSON so a run can be reproduced.
+
+    The output is always PNG -- lossless, so the container adds nothing on top
+    of whatever the perturbation already did in memory.
+
+    ---- why the crop exists (this is the control, not the perturbation) ----
 
     The confound this removes
     -------------------------
@@ -159,29 +218,18 @@ def normalise_image(source: Path, out_dir: Path) -> tuple[Path, str]:
     EXIF is not carried across, which is why this mode is refused on tracks
     where provenance matters.
     """
-    from PIL import Image
-
     note = ""
-    with Image.open(source) as image:
-        image = image.convert("RGB")
-        width, height = image.size
+    with Image.open(source) as handle:
+        image = handle.convert("RGB")
 
-        if width < CROP_SIZE or height < CROP_SIZE:
-            scale = CROP_SIZE / min(width, height)
-            image = image.resize(
-                (max(CROP_SIZE, round(width * scale)),
-                 max(CROP_SIZE, round(height * scale))),
-                Image.LANCZOS,
-            )
-            width, height = image.size
-            note = "upscaled"
+    if normalise == "crop":
+        image, note = _crop_native(image, CROP_SIZE)
 
-        left = (width - CROP_SIZE) // 2
-        top = (height - CROP_SIZE) // 2
-        cropped = image.crop((left, top, left + CROP_SIZE, top + CROP_SIZE))
+    if perturb != "none":
+        image = perturbations.apply(perturb, image)
 
     target = out_dir / f"{source.stem}.png"
-    cropped.save(target, format="PNG")
+    image.save(target, format="PNG")
     return target, note
 
 
@@ -216,7 +264,14 @@ def main() -> int:
     parser.add_argument("--normalise", choices=["none", "crop"], default="none",
                         help="crop: centre-crop every image to 512x512 native "
                              "pixels before analysis, removing the resampling "
-                             "confound. See normalise_image().")
+                             "confound. See prepare_image().")
+    parser.add_argument("--perturb", choices=sorted(perturbations.PERTURBATIONS),
+                        default="none",
+                        help="degrade every image before analysis, for the "
+                             "operating-envelope study. Orthogonal to "
+                             "--normalise, and applied AFTER it: pair it with "
+                             "--normalise crop for the measurement, or use it "
+                             "alone to demonstrate the resolution confound.")
     args = parser.parse_args()
 
     track = TRACKS[args.track]
@@ -256,22 +311,43 @@ def main() -> int:
         return 1
     print()
 
-    # Normalisation strips metadata (PNG re-save), so it must never be used on
-    # a track whose whole purpose is provenance.
-    normalise_dir = None
+    # Both the crop and every perturbation re-save the pixels, which discards
+    # EXIF. Neither may ever run on a track whose whole purpose is provenance.
+    prepared_dir = None
     upscaled_count = 0
-    if args.normalise == "crop":
+    preprocessing = args.normalise == "crop" or args.perturb != "none"
+
+    if preprocessing:
         if args.track == "samples":
-            print("--normalise crop re-saves images as PNG, which discards EXIF.")
+            reason = ("--normalise crop" if args.normalise == "crop"
+                      else f"--perturb {args.perturb}")
+            print(f"{reason} re-saves images, which discards EXIF.")
             print("The samples track exists to exercise provenance, so refusing.")
             return 1
-        normalise_dir = folder.parent / NORMALISED_DIRNAME
-        normalise_dir.mkdir(parents=True, exist_ok=True)
-        for stale in normalise_dir.glob("*"):
+
+        if args.perturb == "none":
+            # Legacy path: keep writing to _normalised/ so the existing
+            # condition reproduces byte-for-byte.
+            prepared_dir = folder.parent / NORMALISED_DIRNAME
+        else:
+            prepared_dir = (folder.parent / PERTURBED_DIRNAME
+                            / condition_name(args.normalise, args.perturb).lstrip("_"))
+        prepared_dir.mkdir(parents=True, exist_ok=True)
+        for stale in prepared_dir.glob("*"):
             stale.unlink()
-        print(f"normalise : centre-crop {CROP_SIZE}x{CROP_SIZE} native pixels, "
-              f"no resampling")
-        print(f"            writing to {normalise_dir}/\n")
+
+        if args.normalise == "crop":
+            print(f"normalise : centre-crop {CROP_SIZE}x{CROP_SIZE} native "
+                  f"pixels, no resampling")
+        if args.perturb != "none":
+            print(f"perturb   : {args.perturb} -- "
+                  f"{perturbations.describe(args.perturb)}")
+            if args.normalise != "crop":
+                print("            ! NATIVE arm: the 1024-vs-512 resolution "
+                      "split is uncontrolled here.")
+                print("            ! This arm demonstrates the confound; it "
+                      "does not measure robustness.")
+        print(f"            writing to {prepared_dir}/\n")
 
     print("Loading classifier...")
     if not model_detector.load_model():
@@ -291,8 +367,11 @@ def main() -> int:
         file_started = time.perf_counter()
         try:
             analysis_path = path
-            if normalise_dir is not None and not is_video:
-                analysis_path, note = normalise_image(path, normalise_dir)
+            if prepared_dir is not None and not is_video:
+                analysis_path, note = prepare_image(
+                    path, prepared_dir,
+                    normalise=args.normalise, perturb=args.perturb,
+                )
                 if note == "upscaled":
                     upscaled_count += 1
 
@@ -397,6 +476,16 @@ def main() -> int:
             if args.normalise == "crop" else "none (images analysed as-is)"
         ),
         "upscaled_before_crop": upscaled_count,
+        # The operating-envelope study. `arm` is the one field that says whether
+        # a number means anything: on the native arm the 1024-vs-512 resolution
+        # split is uncontrolled, so those rows demonstrate the confound rather
+        # than measuring robustness. See perturbations.py.
+        "perturbation": perturbations.describe(args.perturb),
+        "perturbation_name": args.perturb,
+        "preprocessing_order": ("crop then perturb, saved lossless as PNG"
+                                if preprocessing else "none"),
+        "arm": ("matched" if args.normalise == "crop" else "native"),
+        "condition": condition_name(args.normalise, args.perturb).lstrip("_") or "clean",
         "run_at": datetime.now(timezone.utc).isoformat(),
         "elapsed_seconds": round(total_elapsed, 1),
         "model": {
@@ -444,7 +533,7 @@ def main() -> int:
         + [f"{key}_{suffix}" for key in SIGNALS for suffix in ("score", "available")]
         + ["processing_ms", "error"]
     )
-    suffix = "_normalised" if args.normalise == "crop" else ""
+    suffix = condition_name(args.normalise, args.perturb)
     report_path = Path(f"evaluation_report_{args.track}{suffix}.csv")
     with report_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
@@ -459,8 +548,11 @@ def main() -> int:
         return f"{label:<22}{'n/a' if value is None else f'{value:.4f}'}"
 
     print(f"\n{'=' * 62}")
-    print(f"TRACK {args.track.upper()} "
-          f"({'NORMALISED' if args.normalise == 'crop' else 'naive'}) "
+    condition_label = (
+        f"{'NORMALISED' if args.normalise == 'crop' else 'naive'}"
+        + (f", {args.perturb.upper()}" if args.perturb != "none" else "")
+    )
+    print(f"TRACK {args.track.upper()} ({condition_label}) "
           f"-- {len(records)} files in {total_elapsed:.0f}s")
     print("=" * 62)
     print(f"labelled              {len(scored)}")

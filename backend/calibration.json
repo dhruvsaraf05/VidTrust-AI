@@ -1,0 +1,252 @@
+{
+  "source": "evaluation_report_public_normalised.csv",
+  "n": 400,
+  "signal_availability": {
+    "model": 400,
+    "metadata": 0,
+    "frequency": 400
+  },
+  "fittable_signals": [
+    "model",
+    "frequency"
+  ],
+  "monotonicity": {
+    "ece_all_rows": 0.10538914999999999,
+    "monotone": false,
+    "inversions": [
+      {
+        "from": "0.3-0.4",
+        "to": "0.4-0.5",
+        "empirical_from": 1.0,
+        "empirical_to": 0.0
+      },
+      {
+        "from": "0.5-0.6",
+        "to": "0.6-0.7",
+        "empirical_from": 1.0,
+        "empirical_to": 0.0
+      }
+    ],
+    "reliability_all_rows": [
+      {
+        "bin": "0.0-0.1",
+        "n": 142,
+        "mean_predicted": 0.03648112676056338,
+        "empirical": 0.028169014084507043
+      },
+      {
+        "bin": "0.1-0.2",
+        "n": 28,
+        "mean_predicted": 0.1429,
+        "empirical": 0.4642857142857143
+      },
+      {
+        "bin": "0.2-0.3",
+        "n": 15,
+        "mean_predicted": 0.22551066666666664,
+        "empirical": 0.5333333333333333
+      },
+      {
+        "bin": "0.3-0.4",
+        "n": 1,
+        "mean_predicted": 0.3789199999999999,
+        "empirical": 1.0
+      },
+      {
+        "bin": "0.4-0.5",
+        "n": 1,
+        "mean_predicted": 0.46956,
+        "empirical": 0.0
+      },
+      {
+        "bin": "0.5-0.6",
+        "n": 2,
+        "mean_predicted": 0.5575,
+        "empirical": 1.0
+      },
+      {
+        "bin": "0.6-0.7",
+        "n": 3,
+        "mean_predicted": 0.6911466666666667,
+        "empirical": 0.0
+      },
+      {
+        "bin": "0.7-0.8",
+        "n": 32,
+        "mean_predicted": 0.770959375,
+        "empirical": 0.3125
+      },
+      {
+        "bin": "0.8-0.9",
+        "n": 138,
+        "mean_predicted": 0.8492772463768116,
+        "empirical": 0.8985507246376812
+      },
+      {
+        "bin": "0.9-1.0",
+        "n": 38,
+        "mean_predicted": 0.9515873684210527,
+        "empirical": 1.0
+      }
+    ]
+  },
+  "calibration": {
+    "platt_coefficients": {
+      "slope": 5.004021238309024,
+      "intercept": -2.580225709038351
+    },
+    "selection_n": 200,
+    "reporting_n": 200,
+    "held_out": {
+      "ece_raw": 0.1154294,
+      "ece_calibrated": 0.1362567883256698,
+      "brier_raw": 0.11869922454399999,
+      "brier_calibrated": 0.12409430180889708,
+      "reliability_raw": [
+        {
+          "bin": "0.0-0.1",
+          "n": 70,
+          "mean_predicted": 0.03319514285714286,
+          "empirical": 0.02857142857142857
+        },
+        {
+          "bin": "0.1-0.2",
+          "n": 18,
+          "mean_predicted": 0.1461122222222222,
+          "empirical": 0.5
+        },
+        {
+          "bin": "0.2-0.3",
+          "n": 7,
+          "mean_predicted": 0.23431714285714286,
+          "empirical": 0.42857142857142855
+        },
+        {
+          "bin": "0.3-0.4",
+          "n": 0,
+          "mean_predicted": null,
+          "empirical": null
+        },
+        {
+          "bin": "0.4-0.5",
+          "n": 0,
+          "mean_predicted": null,
+          "empirical": null
+        },
+        {
+          "bin": "0.5-0.6",
+          "n": 1,
+          "mean_predicted": 0.57284,
+          "empirical": 1.0
+        },
+        {
+          "bin": "0.6-0.7",
+          "n": 2,
+          "mean_predicted": 0.6867700000000001,
+          "empirical": 0.0
+        },
+        {
+          "bin": "0.7-0.8",
+          "n": 13,
+          "mean_predicted": 0.7634292307692306,
+          "empirical": 0.15384615384615385
+        },
+        {
+          "bin": "0.8-0.9",
+          "n": 68,
+          "mean_predicted": 0.8490835294117647,
+          "empirical": 0.9117647058823529
+        },
+        {
+          "bin": "0.9-1.0",
+          "n": 21,
+          "mean_predicted": 0.9502447619047617,
+          "empirical": 1.0
+        }
+      ],
+      "reliability_calibrated": [
+        {
+          "bin": "0.0-0.1",
+          "n": 64,
+          "mean_predicted": 0.08054130441749947,
+          "empirical": 0.015625
+        },
+        {
+          "bin": "0.1-0.2",
+          "n": 29,
+          "mean_predicted": 0.13901629124859782,
+          "empirical": 0.4482758620689655
+        },
+        {
+          "bin": "0.2-0.3",
+          "n": 2,
+          "mean_predicted": 0.2233670100838851,
+          "empirical": 0.0
+        },
+        {
+          "bin": "0.3-0.4",
+          "n": 0,
+          "mean_predicted": null,
+          "empirical": null
+        },
+        {
+          "bin": "0.4-0.5",
+          "n": 0,
+          "mean_predicted": null,
+          "empirical": null
+        },
+        {
+          "bin": "0.5-0.6",
+          "n": 1,
+          "mean_predicted": 0.5710846377209282,
+          "empirical": 1.0
+        },
+        {
+          "bin": "0.6-0.7",
+          "n": 1,
+          "mean_predicted": 0.6968234002448632,
+          "empirical": 0.0
+        },
+        {
+          "bin": "0.7-0.8",
+          "n": 12,
+          "mean_predicted": 0.7640850948369917,
+          "empirical": 0.16666666666666666
+        },
+        {
+          "bin": "0.8-0.9",
+          "n": 82,
+          "mean_predicted": 0.8465992619070807,
+          "empirical": 0.9024390243902439
+        },
+        {
+          "bin": "0.9-1.0",
+          "n": 9,
+          "mean_predicted": 0.9102408684146293,
+          "empirical": 1.0
+        }
+      ]
+    }
+  },
+  "fitted_fusion": {
+    "folds": 50,
+    "auc_hand_chosen": 0.9487375,
+    "auc_fitted_out_of_fold": 0.96735,
+    "delta": 0.018612500000000032,
+    "coefficients_full_fit": {
+      "model": 4.360036538749196,
+      "frequency": 12.249525103103997
+    },
+    "intercept_full_fit": -5.100678570107487,
+    "implied_relative_weights": {
+      "model": 0.2625016019545432,
+      "frequency": 0.7374983980454567
+    },
+    "hand_chosen_weights": {
+      "model": 0.6,
+      "frequency": 0.15
+    },
+    "adopted": false,
+    "note": "Reported, not adopted. Fitted on a set whose real images are all FFHQ and whose classes differ in native resolution; see REPORT.md section 5."
+  }
+}

@@ -30,6 +30,14 @@ Usage
     .venv/Scripts/python ablation.py --report evaluation_report_public.csv
     .venv/Scripts/python ablation.py --report evaluation_report_public.csv \\
         --compare evaluation_report_public_normalised.csv
+
+Any number of further conditions can be added by name, which is how the
+operating-envelope study reuses this ablation over its perturbed runs:
+
+    .venv/Scripts/python ablation.py \\
+        --condition clean=evaluation_report_public_normalised.csv \\
+        --condition jpeg50=evaluation_report_public_crop_jpeg50.csv \\
+        --out ablation_robustness.json
 """
 
 from __future__ import annotations
@@ -205,17 +213,36 @@ def best_band(rows: list[dict], signals: tuple[str, ...]) -> tuple[float, float,
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", required=True, help="naive evaluation_report csv")
+    parser.add_argument("--report", help="naive evaluation_report csv")
     parser.add_argument("--compare", help="normalised evaluation_report csv")
+    parser.add_argument("--condition", action="append", default=[],
+                        metavar="NAME=PATH",
+                        help="an extra named condition, repeatable. Lets the "
+                             "same ablation run over the operating-envelope "
+                             "conditions as well as the original two.")
     parser.add_argument("--out", default="ablation.json")
     args = parser.parse_args()
 
     low = config.THRESHOLD_LIKELY_REAL
     high = config.THRESHOLD_AI_GENERATED
 
-    conditions = [("naive", Path(args.report))]
+    # --report/--compare are kept so the original two-condition invocation in
+    # README.md keeps working and keeps producing the same two names.
+    conditions: list[tuple[str, Path]] = []
+    if args.report:
+        conditions.append(("naive", Path(args.report)))
     if args.compare:
         conditions.append(("normalised", Path(args.compare)))
+    for item in args.condition:
+        if "=" not in item:
+            print(f"--condition expects NAME=PATH, got {item!r}")
+            return 1
+        name, _, path = item.partition("=")
+        conditions.append((name, Path(path)))
+
+    if not conditions:
+        print("Nothing to do: pass --report and/or --condition NAME=PATH.")
+        return 1
 
     payload = {"thresholds_used": {"likely_real": low, "ai_generated": high},
                "weights": config.WEIGHTS, "conditions": {}}

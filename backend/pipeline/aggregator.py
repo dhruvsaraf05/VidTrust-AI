@@ -181,12 +181,18 @@ def analyze_video(path: str) -> dict:
         "frequency": build_signal("frequency", frequency_result),
     }
 
-    # Note the sampling coverage in the response so a truncated long video is
-    # visible rather than silently partial.
-    if info["truncated"]:
+    # Note the sampling coverage so a sparsely-sampled long video is visible
+    # rather than silently partial.
+    #
+    # This used to read "first Ns of Ms", which was true when the sampler
+    # stopped at the 60-frame cap. It now spreads those frames across the whole
+    # clip, so that sentence would be a lie -- the coverage is complete and it
+    # is the INTERVAL that widens.
+    if info["subsampled"]:
         signals["model"]["detail"] += (
-            f" | capped at {config.VIDEO_MAX_FRAMES} frames"
-            f" (first {info['covered_s']:.0f}s of {info['duration_s']:.0f}s)"
+            f" | {config.VIDEO_MAX_FRAMES} frames spread across the full "
+            f"{info['duration_s']:.0f}s, one every "
+            f"{info['sample_interval_s']:.0f}s"
         )
 
     confidence = fuse(signals)

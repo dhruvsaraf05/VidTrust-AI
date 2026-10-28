@@ -44,10 +44,70 @@ ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 # Limits are enforced before or during the fetch, never after: duration comes
 # from the metadata probe, height from the format selector, size from yt-dlp's
 # own abort, and the wall clock from a progress hook.
-URL_MAX_DURATION_S = 60      # matches the video pipeline's own 60-frame cap
+# 10 minutes. This was 60 s because the sampler only ever took frames from the
+# first minute, so a longer clip would have been judged on its opening and the
+# verdict would have been silently partial. The sampler now spreads its frames
+# across the whole duration, so cost scales with FRAME COUNT, not length: a
+# 10-minute video costs the same ~60 frames of inference as a 60-second one.
+# The cap still exists so one link cannot occupy the server indefinitely.
+URL_MAX_DURATION_S = 600
 URL_MAX_HEIGHT = 720         # no reason to pull 4K to sample at 1 fps
 URL_FETCH_TIMEOUT_S = 30     # overall wall clock for the download
 URL_SOCKET_TIMEOUT_S = 10    # per-read timeout handed to yt-dlp
+
+# --------------------------------------------------------------------------
+# Platform authentication -- read this before changing it
+# --------------------------------------------------------------------------
+# Instagram serves NOTHING to an anonymous client. Verified: a made-up post ID
+# and the official @instagram account fail with the identical "empty media
+# response", so the platform will not even tell us whether a post exists, let
+# alone whether its account is public. There is no anonymous path, and no way
+# to distinguish public from private from the outside.
+#
+# So reaching a reel at all requires a logged-in session, which this reads from
+# a local browser profile. The consequences are real and are not hidden:
+#   * it uses the operator's own Instagram session, the same access they have
+#     in their browser -- it is not a bypass, but it IS automated access that
+#     Instagram's terms restrict;
+#   * a session cookie is a credential. This belongs on a local machine running
+#     a demo, not on a deployed server shared with anyone;
+#   * sessions expire, so the link path will break periodically and must fail
+#     gracefully back to file upload.
+#
+# Set to a browser name ("chrome", "firefox", "edge", "brave") to enable, or
+# None to refuse authentication entirely -- in which case Instagram links fail
+# and the interface routes the user to upload instead.
+#
+# MEASURED ON THIS MACHINE, and the result is why URL_COOKIE_FILE exists:
+#   edge     FAIL  "Could not copy Chrome cookie database" -- the browser holds
+#                  a lock on it. Closing Edge may clear this.
+#   brave    FAIL  "Failed to decrypt with DPAPI" -- Chromium 127+ encrypts
+#                  cookies so only the browser process can read them. This is
+#                  NOT fixable by closing the browser.
+#   firefox  OK    the jar reads cleanly. Firefox does not app-bind its cookies.
+#
+# So on current Windows, a Chromium browser is the unreliable option and
+# Firefox or a cookie file is the dependable one.
+URL_BROWSER_COOKIES: str | None = "firefox"
+
+# Path to a Netscape-format cookies.txt, exported from whichever browser is
+# actually signed in. Takes precedence over URL_BROWSER_COOKIES.
+#
+# This is the robust path: it is a plain file, so none of the browser-lock or
+# app-bound-encryption failures above can apply. It is also the more dangerous
+# one to be careless with -- that file IS the session. Keep it outside the
+# repository, and note that backend/.gitignore does not cover arbitrary paths.
+URL_COOKIE_FILE: str | None = None
+
+# Cookies are sent ONLY to hosts that genuinely require a login. A pasted URL
+# pointing anywhere else gets an anonymous fetch, so an arbitrary host can
+# never be handed the browser's cookie jar. Matched against the registered
+# domain, so subdomains of these are included.
+URL_COOKIE_HOSTS = {
+    "instagram.com",
+    "facebook.com",
+    "threads.net",
+}
 
 # Platforms re-encode on upload, so provenance is stripped in transit for every
 # URL. The generic "no metadata found" wording understates that: it reads as

@@ -35,6 +35,22 @@ from pathlib import Path
 import config
 
 
+def number(value, width: int, places: int = 3) -> str:
+    """Format a score that may be blank (signal unavailable) or None.
+
+    Every numeric column in this report can legitimately have no value: a
+    signal that did not run is reported as unavailable, never as 0.0, and the
+    CSV carries an empty cell for it. Printing a dash preserves that
+    distinction instead of inventing a zero.
+    """
+    if value is None or value == "" or value == "-":
+        return f"{'-':>{width}}"
+    try:
+        return f"{float(value):>{width}.{places}f}"
+    except (TypeError, ValueError):
+        return f"{'-':>{width}}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", required=True)
@@ -82,11 +98,15 @@ def main() -> int:
     for row in worst:
         generator = row.get("model_name") or "(real photo)"
         architecture = row.get("architecture") or "-"
-        model_score = row.get("model_score") or "-"
-        freq_score = row.get("frequency_score") or "-"
+        # A blank score means the signal was unavailable on this file, which is
+        # a normal outcome, not an error -- so it must print as a dash rather
+        # than crash. float("-") used to raise ValueError here, and only on the
+        # misclassified rows with a dead signal: exactly the rows this table
+        # exists to show.
         print(f"{row['margin']:>7.3f}  {row['direction']:<16}"
               f"{row['confidence']:>6.3f}"
-              f"{float(model_score):>7.3f}{float(freq_score):>7.3f}  "
+              f"{number(row.get('model_score'), 7)}"
+              f"{number(row.get('frequency_score'), 7)}  "
               f"{(generator + ' / ' + architecture)[:44]:<44}")
 
     if not worst:
@@ -144,7 +164,7 @@ def main() -> int:
         print(f"{entry['generator'][:43]:<44}{entry['architecture'][:9]:<10}"
               f"{entry['n']:>4}{entry['caught']:>8}{entry['missed']:>8}"
               f"{entry['abstained']:>8}{entry['slip_rate']:>7.2f}"
-              f"{entry['mean_model_score']:>9.3f}")
+              f"{number(entry['mean_model_score'], 9)}")
     if len(table) > 20:
         print(f"  ... {len(table) - 20} more generators")
 

@@ -1,0 +1,482 @@
+{
+  "thresholds": {
+    "likely_real": 0.35,
+    "ai_generated": 0.65
+  },
+  "weights": {
+    "model": 0.6,
+    "metadata": 0.25,
+    "frequency": 0.15
+  },
+  "note": "matched = both classes centre-cropped to 512 native pixels before the perturbation; native = uncontrolled, retained only to demonstrate the resolution confound",
+  "arms": {
+    "matched": {
+      "clean": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9487375,
+          "model": 0.8947,
+          "metadata": null,
+          "frequency": 0.912875
+        },
+        "at_frozen_band": {
+          "accuracy": 0.8383838383838383,
+          "precision": 0.8151658767772512,
+          "recall": 0.8730964467005076,
+          "decided": 396,
+          "abstained": 4,
+          "coverage": 0.99,
+          "confusion": {
+            "tp": 172,
+            "fp": 39,
+            "tn": 160,
+            "fn": 25
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.861699,
+          "real": 0.22531199999999998,
+          "generated_above_threshold": 173,
+          "generated_total": 200
+        }
+      },
+      "jpeg95": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.909675,
+          "model": 0.8176875,
+          "metadata": null,
+          "frequency": 0.912775
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7727272727272727,
+          "precision": 0.7883597883597884,
+          "recall": 0.7487437185929648,
+          "decided": 396,
+          "abstained": 4,
+          "coverage": 0.99,
+          "confusion": {
+            "tp": 149,
+            "fp": 40,
+            "tn": 157,
+            "fn": 50
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.7520315,
+          "real": 0.240847,
+          "generated_above_threshold": 149,
+          "generated_total": 200
+        }
+      },
+      "jpeg75": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9313625,
+          "model": 0.795,
+          "metadata": null,
+          "frequency": 0.91315
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7744360902255639,
+          "precision": 0.8716216216216216,
+          "recall": 0.645,
+          "decided": 399,
+          "abstained": 1,
+          "coverage": 0.9975,
+          "confusion": {
+            "tp": 129,
+            "fp": 19,
+            "tn": 180,
+            "fn": 71
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.642289,
+          "real": 0.1197275,
+          "generated_above_threshold": 129,
+          "generated_total": 200
+        }
+      },
+      "jpeg50": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.93285,
+          "model": 0.7844875,
+          "metadata": null,
+          "frequency": 0.911875
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7455919395465995,
+          "precision": 0.8870967741935484,
+          "recall": 0.5583756345177665,
+          "decided": 397,
+          "abstained": 3,
+          "coverage": 0.9925,
+          "confusion": {
+            "tp": 110,
+            "fp": 14,
+            "tn": 186,
+            "fn": 87
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.567011,
+          "real": 0.0889785,
+          "generated_above_threshold": 111,
+          "generated_total": 200
+        }
+      },
+      "jpeg30": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9354875,
+          "model": 0.7683375,
+          "metadata": null,
+          "frequency": 0.909775
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7286432160804021,
+          "precision": 0.95,
+          "recall": 0.4797979797979798,
+          "decided": 398,
+          "abstained": 2,
+          "coverage": 0.995,
+          "confusion": {
+            "tp": 95,
+            "fp": 5,
+            "tn": 195,
+            "fn": 103
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.48480449999999997,
+          "real": 0.045951500000000006,
+          "generated_above_threshold": 95,
+          "generated_total": 200
+        }
+      },
+      "downscale75": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9479875,
+          "model": 0.8956375,
+          "metadata": null,
+          "frequency": 0.9068375
+        },
+        "at_frozen_band": {
+          "accuracy": 0.8245614035087719,
+          "precision": 0.7927927927927928,
+          "recall": 0.88,
+          "decided": 399,
+          "abstained": 1,
+          "coverage": 0.9975,
+          "confusion": {
+            "tp": 176,
+            "fp": 46,
+            "tn": 153,
+            "fn": 24
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.877161,
+          "real": 0.260803,
+          "generated_above_threshold": 176,
+          "generated_total": 200
+        }
+      },
+      "downscale50": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9306,
+          "model": 0.868125,
+          "metadata": null,
+          "frequency": 0.901575
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7678571428571429,
+          "precision": 0.716,
+          "recall": 0.8994974874371859,
+          "decided": 392,
+          "abstained": 8,
+          "coverage": 0.98,
+          "confusion": {
+            "tp": 179,
+            "fp": 71,
+            "tn": 122,
+            "fn": 20
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.8912534999999999,
+          "real": 0.393322,
+          "generated_above_threshold": 179,
+          "generated_total": 200
+        }
+      },
+      "crop256": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9157125,
+          "model": 0.848775,
+          "metadata": null,
+          "frequency": 0.9117125
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7853535353535354,
+          "precision": 0.8021390374331551,
+          "recall": 0.7575757575757576,
+          "decided": 396,
+          "abstained": 4,
+          "coverage": 0.99,
+          "confusion": {
+            "tp": 150,
+            "fp": 37,
+            "tn": 161,
+            "fn": 48
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.7558320000000001,
+          "real": 0.212914,
+          "generated_above_threshold": 150,
+          "generated_total": 200
+        }
+      },
+      "noise2": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9218875,
+          "model": 0.843675,
+          "metadata": null,
+          "frequency": 0.911675
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7095959595959596,
+          "precision": 0.6523297491039427,
+          "recall": 0.91,
+          "decided": 396,
+          "abstained": 4,
+          "coverage": 0.99,
+          "confusion": {
+            "tp": 182,
+            "fp": 97,
+            "tn": 99,
+            "fn": 18
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.909437,
+          "real": 0.510521,
+          "generated_above_threshold": 182,
+          "generated_total": 200
+        }
+      },
+      "noise5": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.91075,
+          "model": 0.8159375,
+          "metadata": null,
+          "frequency": 0.9045875
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7682619647355163,
+          "precision": 0.8407643312101911,
+          "recall": 0.6633165829145728,
+          "decided": 397,
+          "abstained": 3,
+          "coverage": 0.9925,
+          "confusion": {
+            "tp": 132,
+            "fp": 25,
+            "tn": 173,
+            "fn": 67
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.6663105,
+          "real": 0.1549255,
+          "generated_above_threshold": 132,
+          "generated_total": 200
+        }
+      },
+      "noise10": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.93435,
+          "model": 0.7446,
+          "metadata": null,
+          "frequency": 0.8818375
+        },
+        "at_frozen_band": {
+          "accuracy": 0.6892230576441103,
+          "precision": 1.0,
+          "recall": 0.3768844221105528,
+          "decided": 399,
+          "abstained": 1,
+          "coverage": 0.9975,
+          "confusion": {
+            "tp": 75,
+            "fp": 0,
+            "tn": 200,
+            "fn": 124
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.38079300000000005,
+          "real": 0.0057374999999999995,
+          "generated_above_threshold": 76,
+          "generated_total": 200
+        }
+      },
+      "messaging": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9623,
+          "model": 0.858825,
+          "metadata": null,
+          "frequency": 0.9067625
+        },
+        "at_frozen_band": {
+          "accuracy": 0.797979797979798,
+          "precision": 0.9606299212598425,
+          "recall": 0.6192893401015228,
+          "decided": 396,
+          "abstained": 4,
+          "coverage": 0.99,
+          "confusion": {
+            "tp": 122,
+            "fp": 5,
+            "tn": 194,
+            "fn": 75
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.618312,
+          "real": 0.041373999999999994,
+          "generated_above_threshold": 122,
+          "generated_total": 200
+        }
+      }
+    },
+    "native": {
+      "clean": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.919575,
+          "model": 0.83975,
+          "metadata": null,
+          "frequency": 0.9012375
+        },
+        "at_frozen_band": {
+          "accuracy": 0.759493670886076,
+          "precision": 0.7107438016528925,
+          "recall": 0.8730964467005076,
+          "decided": 395,
+          "abstained": 5,
+          "coverage": 0.9875,
+          "confusion": {
+            "tp": 172,
+            "fp": 70,
+            "tn": 128,
+            "fn": 25
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.861699,
+          "real": 0.37227649999999995,
+          "generated_above_threshold": 173,
+          "generated_total": 200
+        }
+      },
+      "jpeg50": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.965575,
+          "model": 0.8688,
+          "metadata": null,
+          "frequency": 0.8970625
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7682619647355163,
+          "precision": 0.9565217391304348,
+          "recall": 0.5583756345177665,
+          "decided": 397,
+          "abstained": 3,
+          "coverage": 0.9925,
+          "confusion": {
+            "tp": 110,
+            "fp": 5,
+            "tn": 195,
+            "fn": 87
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.567011,
+          "real": 0.036338499999999996,
+          "generated_above_threshold": 111,
+          "generated_total": 200
+        }
+      },
+      "noise10": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.7700625,
+          "model": 0.539475,
+          "metadata": null,
+          "frequency": 0.9254875
+        },
+        "at_frozen_band": {
+          "accuracy": 0.5994962216624685,
+          "precision": 0.6818181818181818,
+          "recall": 0.3768844221105528,
+          "decided": 397,
+          "abstained": 3,
+          "coverage": 0.9925,
+          "confusion": {
+            "tp": 75,
+            "fp": 35,
+            "tn": 163,
+            "fn": 124
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.38079300000000005,
+          "real": 0.20492950000000001,
+          "generated_above_threshold": 76,
+          "generated_total": 200
+        }
+      },
+      "messaging": {
+        "n": 400,
+        "auc": {
+          "ensemble": 0.9462,
+          "model": 0.843475,
+          "metadata": null,
+          "frequency": 0.8729
+        },
+        "at_frozen_band": {
+          "accuracy": 0.7909319899244333,
+          "precision": 0.9384615384615385,
+          "recall": 0.6192893401015228,
+          "decided": 397,
+          "abstained": 3,
+          "coverage": 0.9925,
+          "confusion": {
+            "tp": 122,
+            "fp": 8,
+            "tn": 192,
+            "fn": 75
+          }
+        },
+        "classifier_mean": {
+          "generated": 0.618312,
+          "real": 0.056196,
+          "generated_above_threshold": 122,
+          "generated_total": 200
+        }
+      }
+    }
+  }
+}

@@ -26,7 +26,9 @@ URL_FETCH_FAILED, which is the honest outcome.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import socket
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -73,6 +75,88 @@ def _looks_like_url(candidate: str) -> bool:
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
+def _resolves_to_public_host(candidate: str) -> tuple[bool, str]:
+    """Reject URLs that point back inside the network. Returns (ok, reason).
+
+    Why this exists
+    ---------------
+    /api/analyze-url is unauthenticated and hands whatever it is given to
+    yt-dlp, which will fetch it. Without this check, a scheme test alone lets
+    through http://127.0.0.1:8000/, http://10.x.x.x/ and
+    http://169.254.169.254/latest/meta-data/ -- the cloud metadata endpoint.
+    The response leaks the hostname back as `source.platform`, and the distinct
+    error strings from _explain() distinguish "reachable" from "timed out" from
+    "unsupported", which together make a usable blind port scanner. That is a
+    server-side request forgery, and it was in this file until it was measured
+    and fixed.
+
+    What it cannot do
+    -----------------
+    This resolves the hostname once and checks every address it gets. It does
+    not follow what yt-dlp does afterwards: a permitted host that redirects, or
+    serves an HLS manifest pointing somewhere private, is not re-checked, and a
+    name that resolves differently on the second lookup (DNS rebinding) would
+    slip through. Closing those needs a custom resolver or an egress proxy,
+    which is out of scope here. Stated rather than implied.
+    """
+    host = urlparse(candidate.strip()).hostname
+    if not host:
+        return False, "no host"
+
+    try:
+        resolved = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        # A name that does not resolve is not a security decision; let yt-dlp
+        # fail on it so the user gets the normal "host not supported" wording.
+        return True, "unresolvable, deferred to the fetcher"
+
+    for family, _, _, _, address in resolved:
+        if family not in (socket.AF_INET, socket.AF_INET6):
+            continue
+        try:
+            ip = ipaddress.ip_address(address[0])
+        except ValueError:
+            return False, f"uninterpretable address {address[0]!r}"
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return False, f"{host} resolves to the non-public address {ip}"
+
+    return True, "public"
+
+
+def _needs_login(url: str) -> bool:
+    """Is this host one that serves nothing without a session?"""
+    host = (urlparse(url.strip()).hostname or "").lower().removeprefix("www.")
+    return any(host == known or host.endswith("." + known)
+               for known in config.URL_COOKIE_HOSTS)
+
+
+def _cookie_options(url: str) -> dict:
+    """Browser cookies, but only for hosts that genuinely require them.
+
+    Scoped deliberately. yt-dlp would happily carry the whole cookie jar to
+    whatever host it is pointed at, and this endpoint takes an arbitrary URL
+    from an arbitrary user -- so without this gate, pasting a link to a server
+    you control would hand it the operator's session cookies. Cookies go to
+    config.URL_COOKIE_HOSTS and nowhere else; every other URL is fetched
+    anonymously exactly as before.
+    """
+    if not _needs_login(url):
+        return {"cookiefile": None, "cookiesfrombrowser": None}
+
+    # A cookie file wins: it cannot be defeated by a browser lock or by
+    # Chromium's app-bound encryption, both of which were measured failing on
+    # this machine. See the note in config.py.
+    if config.URL_COOKIE_FILE:
+        return {"cookiefile": config.URL_COOKIE_FILE, "cookiesfrombrowser": None}
+
+    if config.URL_BROWSER_COOKIES:
+        return {"cookiefile": None,
+                "cookiesfrombrowser": (config.URL_BROWSER_COOKIES, None, None, None)}
+
+    return {"cookiefile": None, "cookiesfrombrowser": None}
+
+
 def _platform_of(info: dict, url: str) -> str:
     extractor = (info.get("extractor_key") or info.get("extractor") or "").lower()
     if extractor and extractor != "generic":
@@ -96,15 +180,26 @@ def fetch(url: str, into: Path) -> tuple[Path, dict]:
     if not _looks_like_url(url):
         raise UrlError("URL_INVALID", "That is not a valid http(s) URL.")
 
+    allowed, reason = _resolves_to_public_host(url)
+    if not allowed:
+        # Logged with the reason, but the client is told only that the target
+        # is not permitted: the whole point of the check is to stop this
+        # endpoint reporting what is and is not reachable inside the network.
+        logger.warning("Refused URL pointing at a non-public host: %s", reason)
+        raise UrlError(
+            "URL_INVALID",
+            "That URL points to a private or local network address, which "
+            "this endpoint will not fetch.",
+        )
+
     probe_options = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
         "socket_timeout": config.URL_SOCKET_TIMEOUT_S,
-        # Never attempt authentication. A login wall is a failure, not a
-        # problem to work around.
-        "cookiefile": None,
-        "cookiesfrombrowser": None,
+        # Sets both cookiefile and cookiesfrombrowser, and sets both to None
+        # for any host not in config.URL_COOKIE_HOSTS.
+        **_cookie_options(url),
     }
 
     # --- 1. probe: duration is checked before a single media byte is fetched
@@ -197,15 +292,29 @@ def _explain(exc: Exception) -> str:
     Never leaks a stack trace or a filesystem path.
     """
     text = str(exc).lower()
-    # Instagram's wording is "accessible ... without being logged-in" and it
-    # suggests passing cookies. We never do that, so surface it as the login
-    # wall it is rather than as a generic failure.
+
+    # A genuinely private account is a different answer from "we are not signed
+    # in", and the user can act on each differently -- so they must not collapse
+    # into one message. This branch is only reachable when a session IS being
+    # used, because without one Instagram returns the generic empty-response
+    # error for everything, public or private alike.
+    if "private" in text or "not available to this account" in text:
+        return ("That post is from a private account, so it cannot be "
+                "fetched. Save the video and upload the file instead.")
+
+    # No session, on a host that will not serve anyone without one.
     if any(marker in text for marker in (
-        "private", "sign in", "log in", "login", "logged-in",
-        "cookies", "authentication", "empty media response",
+        "sign in", "log in", "login", "logged-in", "cookies",
+        "authentication", "empty media response",
     )):
-        return ("That media is private or behind a login wall. Public links "
-                "only -- this tool never uses credentials or cookies.")
+        if config.URL_BROWSER_COOKIES:
+            return ("The saved browser session was rejected -- it has most "
+                    "likely expired. Sign in to the platform in "
+                    f"{config.URL_BROWSER_COOKIES} again, or save the video "
+                    "and upload the file instead.")
+        return ("This platform serves nothing without a signed-in session, "
+                "and no credentials are configured. Save the video and "
+                "upload the file instead.")
     if "unavailable" in text or "removed" in text or "deleted" in text:
         return "That media is unavailable, removed, or region-blocked."
     if "unsupported url" in text or "no suitable" in text:

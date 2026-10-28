@@ -92,6 +92,35 @@ def load_error() -> str | None:
     return _load_error
 
 
+def pipe() -> Any:
+    """The loaded pipeline, or None.
+
+    Exists so the saliency module can reach the underlying torch model and its
+    image processor WITHOUT loading a second copy of a 744 MB checkpoint, and
+    without reaching into `_pipe` from another module. The classifier is loaded
+    once, in the lifespan handler, and everything that needs it shares that one
+    instance.
+    """
+    return _pipe
+
+
+def ai_label_index() -> int | None:
+    """Index of the 'machine-generated' class in the model's own id2label.
+
+    Resolved from the model card's labels against config.AI_LABELS, never
+    assumed to be 0. A head reporting only LABEL_0/LABEL_1 returns None here,
+    for the same reason _ai_probability refuses it: guessing which index means
+    "AI" would silently invert everything downstream.
+    """
+    if _pipe is None:
+        return None
+    id2label = getattr(_pipe.model.config, "id2label", None) or {}
+    for index, label in id2label.items():
+        if str(label).strip().lower() in config.AI_LABELS:
+            return int(index)
+    return None
+
+
 def _ai_probability(predictions: Sequence[dict]) -> float | None:
     """Collapse a label distribution into P(machine-generated).
 
