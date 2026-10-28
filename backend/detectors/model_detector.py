@@ -17,6 +17,7 @@ import logging
 from typing import Any, Sequence
 
 import config
+from detectors.redact import redact
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def load_model() -> bool:
         import torch
         from transformers import pipeline as hf_pipeline
     except Exception as exc:  # pragma: no cover - environment problem
-        _load_error = f"torch/transformers import failed: {exc}"
+        _load_error = f"torch/transformers import failed: {redact(exc)}"
         logger.error(_load_error)
         return False
 
@@ -73,7 +74,7 @@ def load_model() -> bool:
             return True
         except Exception as exc:
             logger.warning("Could not load %s: %s", candidate, exc)
-            _load_error = f"{candidate}: {exc}"
+            _load_error = f"{candidate}: {redact(exc)}"
 
     logger.error("No classifier could be loaded. Model signal is unavailable.")
     _pipe = None
@@ -176,7 +177,7 @@ def analyze(image) -> dict:
         return {
             "score": 0.0,
             "available": False,
-            "detail": f"Inference failed: {exc}",
+            "detail": f"Inference failed: {redact(exc)}",
         }
 
     if score is None:

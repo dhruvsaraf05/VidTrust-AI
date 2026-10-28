@@ -35,11 +35,11 @@ const MESSAGES = {
   URL_FETCH_FAILED: {
     title: 'The media could not be fetched',
     action:
-      'Public links only. Private posts, login walls and region-blocked media cannot be reached, and no credentials are used.',
+      'Private posts, expired sessions and region-blocked media cannot be reached. Save the video and upload the file instead.',
   },
   URL_TOO_LONG: {
     title: 'That clip is too long',
-    action: 'Pick a clip of 60 seconds or less.',
+    action: 'Pick a shorter clip, or save it and upload the file.',
   },
   URL_TOO_LARGE: {
     title: 'That media is over the 50 MB limit',

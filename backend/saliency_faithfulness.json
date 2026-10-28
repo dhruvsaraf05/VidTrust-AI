@@ -1,0 +1,265 @@
+{
+  "model": "haywoodsloan/ai-image-detector-deploy",
+  "cam_stage": 2,
+  "min_span": 0.15,
+  "occlusion_grid": 8,
+  "seed": 0,
+  "source": "evaluation_set/images, centre-cropped to 512",
+  "overall": {
+    "n": 20,
+    "rho_median": -0.0198,
+    "rho_min": -0.4748,
+    "rho_max": 0.7553,
+    "rho_positive": 9,
+    "gate_draws": 16,
+    "gate_draws_rho_positive": 8,
+    "max_cell_drop_median": 0.4808,
+    "max_cell_drop_max": 3.7291
+  },
+  "by_class": {
+    "AI": {
+      "n": 10,
+      "rho_median": -0.0456,
+      "rho_min": -0.4748,
+      "rho_max": 0.7553,
+      "rho_positive": 3,
+      "gate_draws": 9,
+      "gate_draws_rho_positive": 3,
+      "max_cell_drop_median": 0.6857,
+      "max_cell_drop_max": 3.7291
+    },
+    "REAL": {
+      "n": 10,
+      "rho_median": 0.0291,
+      "rho_min": -0.2197,
+      "rho_max": 0.3425,
+      "rho_positive": 6,
+      "gate_draws": 7,
+      "gate_draws_rho_positive": 5,
+      "max_cell_drop_median": 0.1767,
+      "max_cell_drop_max": 3.5868
+    }
+  },
+  "rows": [
+    {
+      "filename": "ai_098_dream-textures-texture-diffusion.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": -1.3637,
+      "spearman_rho": -0.078,
+      "gate_span": 0.4888,
+      "gate_draws": true,
+      "max_cell_drop": 0.195,
+      "cam_nonzero_cells": 124
+    },
+    {
+      "filename": "ai_194_sheshenin-shshnnphoto.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 0.4105,
+      "spearman_rho": -0.0531,
+      "gate_span": 0.1755,
+      "gate_draws": true,
+      "max_cell_drop": 1.5336,
+      "cam_nonzero_cells": 61
+    },
+    {
+      "filename": "ai_107_haor-evt-v4-preview.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 2.1083,
+      "spearman_rho": -0.1808,
+      "gate_span": 0.5858,
+      "gate_draws": true,
+      "max_cell_drop": 3.3892,
+      "cam_nonzero_cells": 241
+    },
+    {
+      "filename": "ai_010_lewdryuna-a-rainier.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 4.4721,
+      "spearman_rho": -0.4748,
+      "gate_span": 0.4677,
+      "gate_draws": true,
+      "max_cell_drop": 0.5654,
+      "cam_nonzero_cells": 97
+    },
+    {
+      "filename": "ai_066_jamesflare-pastel-mix.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 2.7166,
+      "spearman_rho": -0.038,
+      "gate_span": 0.5244,
+      "gate_draws": true,
+      "max_cell_drop": 3.7291,
+      "cam_nonzero_cells": 136
+    },
+    {
+      "filename": "ai_130_masagin-deliberate.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 2.8581,
+      "spearman_rho": 0.5099,
+      "gate_span": 0.1873,
+      "gate_draws": true,
+      "max_cell_drop": 0.7091,
+      "cam_nonzero_cells": 86
+    },
+    {
+      "filename": "ai_124_haya44-shrt-finetune.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 3.2087,
+      "spearman_rho": 0.7553,
+      "gate_span": 0.5658,
+      "gate_draws": true,
+      "max_cell_drop": 0.9649,
+      "cam_nonzero_cells": 96
+    },
+    {
+      "filename": "ai_103_selshiya-teapot.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": -0.1763,
+      "spearman_rho": 0.0621,
+      "gate_span": 0.7322,
+      "gate_draws": true,
+      "max_cell_drop": 0.6623,
+      "cam_nonzero_cells": 196
+    },
+    {
+      "filename": "ai_077_mohitsk-realisticcomicbook.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": 5.215,
+      "spearman_rho": -0.0017,
+      "gate_span": 0.0,
+      "gate_draws": false,
+      "max_cell_drop": 0.3283,
+      "cam_nonzero_cells": 6
+    },
+    {
+      "filename": "ai_122_bguisard-stable-diffusion-nano-2-1.png",
+      "expected": "AI",
+      "architecture": "LatDiff",
+      "ai_logit": -1.8949,
+      "spearman_rho": -0.1667,
+      "gate_span": 0.4793,
+      "gate_draws": true,
+      "max_cell_drop": -0.2719,
+      "cam_nonzero_cells": 127
+    },
+    {
+      "filename": "real_091_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -0.4715,
+      "spearman_rho": -0.0833,
+      "gate_span": 0.425,
+      "gate_draws": true,
+      "max_cell_drop": 0.7346,
+      "cam_nonzero_cells": 152
+    },
+    {
+      "filename": "real_149_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -1.2943,
+      "spearman_rho": 0.0649,
+      "gate_span": 0.2016,
+      "gate_draws": true,
+      "max_cell_drop": 0.0739,
+      "cam_nonzero_cells": 64
+    },
+    {
+      "filename": "real_055_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -1.5262,
+      "spearman_rho": 0.2149,
+      "gate_span": 0.5443,
+      "gate_draws": true,
+      "max_cell_drop": 0.1317,
+      "cam_nonzero_cells": 206
+    },
+    {
+      "filename": "real_129_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -1.2968,
+      "spearman_rho": -0.1381,
+      "gate_span": 0.5186,
+      "gate_draws": true,
+      "max_cell_drop": 0.3962,
+      "cam_nonzero_cells": 140
+    },
+    {
+      "filename": "real_035_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": 0.2138,
+      "spearman_rho": 0.0059,
+      "gate_span": 0.408,
+      "gate_draws": true,
+      "max_cell_drop": 1.2581,
+      "cam_nonzero_cells": 142
+    },
+    {
+      "filename": "real_072_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -2.3233,
+      "spearman_rho": -0.2197,
+      "gate_span": 0.1131,
+      "gate_draws": false,
+      "max_cell_drop": 0.1012,
+      "cam_nonzero_cells": 35
+    },
+    {
+      "filename": "real_193_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -1.7757,
+      "spearman_rho": 0.2489,
+      "gate_span": 0.4524,
+      "gate_draws": true,
+      "max_cell_drop": 0.1454,
+      "cam_nonzero_cells": 91
+    },
+    {
+      "filename": "real_024_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -1.3042,
+      "spearman_rho": 0.0523,
+      "gate_span": 0.0,
+      "gate_draws": false,
+      "max_cell_drop": 0.2079,
+      "cam_nonzero_cells": 11
+    },
+    {
+      "filename": "real_158_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": -2.3311,
+      "spearman_rho": -0.21,
+      "gate_span": 0.0,
+      "gate_draws": false,
+      "max_cell_drop": -0.0472,
+      "cam_nonzero_cells": 13
+    },
+    {
+      "filename": "real_064_n-a.png",
+      "expected": "REAL",
+      "architecture": "Real",
+      "ai_logit": 2.6526,
+      "spearman_rho": 0.3425,
+      "gate_span": 0.5039,
+      "gate_draws": true,
+      "max_cell_drop": 3.5868,
+      "cam_nonzero_cells": 146
+    }
+  ]
+}

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { MODES, analyze, analyzeUrl, health } from './api/client'
+import { MODES, analyze, analyzeUrl, health, reliability } from './api/client'
 import ErrorState from './components/ErrorState'
+import EvidencePanel from './components/EvidencePanel'
 import FrameTimeline from './components/FrameTimeline'
 import HealthIndicator from './components/HealthIndicator'
 import ModeToggle from './components/ModeToggle'
 import RawResponse from './components/RawResponse'
+import ReliabilityCard from './components/ReliabilityCard'
 import SignalLedger from './components/SignalLedger'
 import ThemeToggle from './components/ThemeToggle'
 import ThresholdTrack from './components/ThresholdTrack'
@@ -36,6 +38,11 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [resultSource, setResultSource] = useState(null) // mode the last result came from
   const [failure, setFailure] = useState(null)
+  // Fetched beside the analysis, never merged into `result` (see client.js).
+  const [card, setCard] = useState(null)
+  // The uploaded file behind the current result, for the evidence panel.
+  // Null for links (the download is gone) and for fixtures.
+  const [analyzedFile, setAnalyzedFile] = useState(null)
   const [healthState, setHealthState] = useState(null)
   // 'file' or 'url'. Both feed the identical result components.
   const [inputMode, setInputMode] = useState(
@@ -93,6 +100,8 @@ export default function App() {
   const handleFileSelected = useCallback(() => {
     setResult(null)
     setFailure(null)
+    setCard(null)
+    setAnalyzedFile(null)
   }, [])
 
   async function runAnalysis(work, source) {
@@ -101,6 +110,8 @@ export default function App() {
     setResult(null)
     setResultSource(null)
     setFailure(null)
+    setCard(null)
+    setAnalyzedFile(null)
 
     const outcome = await work()
 
@@ -114,11 +125,19 @@ export default function App() {
     setBusy(false)
   }
 
-  const handleAnalyze = (file) =>
-    runAnalysis(
+  const handleAnalyze = (file) => {
+    const run = runAnalysis(
       () => analyze(file, { mode: resolvedMode, onProgress: setProgress }),
       resolvedMode,
     )
+    // After runAnalysis has cleared the previous card. No card for a fixture:
+    // it would describe the real file beside a verdict never computed from it.
+    if (resolvedMode === MODES.LIVE) {
+      reliability(file).then(setCard)
+      setAnalyzedFile(file)
+    }
+    return run
+  }
 
   // Link mode always calls the live backend -- there is no URL fixture.
   const handleAnalyzeUrl = (url) => runAnalysis(() => analyzeUrl(url), MODES.LIVE)
@@ -182,6 +201,7 @@ export default function App() {
             onAnalyze={handleAnalyzeUrl}
             onInputChanged={handleFileSelected}
             busy={busy || detectingMode}
+            limits={healthState?.ok ? healthState.data?.url : null}
             live
           />
         )}
@@ -192,6 +212,8 @@ export default function App() {
           <ResultView
             result={result}
             thresholds={thresholds}
+            card={result.reliability ?? card}
+            evidenceFile={result.media_type === 'image' ? analyzedFile : null}
             isFixture={resultSource === MODES.MOCK}
             onSwitchToLive={() => setMode(MODES.LIVE)}
           />
@@ -324,7 +346,7 @@ function AboutPanel() {
   )
 }
 
-function ResultView({ result, thresholds, isFixture, onSwitchToLive }) {
+function ResultView({ result, thresholds, card, evidenceFile, isFixture, onSwitchToLive }) {
   return (
     <div className="reveal mt-12">
       {/* This is what a genuine misclassification looked like from the
@@ -384,6 +406,10 @@ function ResultView({ result, thresholds, isFixture, onSwitchToLive }) {
       </div>
 
       <SignalLedger signals={result.signals} confidence={result.confidence} />
+
+      <ReliabilityCard card={card} />
+
+      {evidenceFile && <EvidencePanel file={evidenceFile} />}
 
       <FrameTimeline
         frames={result.frames}

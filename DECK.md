@@ -1,6 +1,6 @@
 # Demo 2 — slide deck
 
-Eight slides. Every figure traces to a script; see
+Nine slides. Every figure traces to a script; see
 [README.md](README.md#reproducing-every-number). Speaker notes are the
 indented blocks — say these, don't put them on the slide.
 
@@ -169,6 +169,43 @@ limitations.
 
 ---
 
+## 6b — Where it stops working
+
+**JPEG q30:** AUC 0.9487 → 0.9355, but generated images flagged
+**172 → 95 of 200**. AUC barely moves; nearly half the detections go.
+
+**Light noise (σ=2):** real images flagged **39 → 97 of 200**. Mild
+degradation makes real photos look generated; heavy degradation makes
+generated images look real.
+
+**Without the resolution control**, JPEG and platform re-encoding appear to
+*improve* the classifier. Two of three conditions flip sign.
+
+**The confidence is not a probability:** ECE 0.1154, not even monotone. A
+fitted fusion scores 0.9674 out-of-fold. Not adopted.
+
+> Lead with the q30 pair. A reader who sees AUC 0.94 under heavy compression
+> calls the detector robust; the deployed system is silently answering
+> UNCERTAIN on almost half the generated images. AUC measures ordering, and
+> the ordering survives; the scores slide under the 0.65 line.
+>
+> Then the other direction, which surprised us: σ=2 noise lifts the mean
+> real-image score from 0.225 to 0.511. So "where it stops working" is two
+> failure modes, and the app now shows the user which one their file is near:
+> the Reliability Card reads the file's JPEG quality and quotes the measured
+> row for it.
+>
+> The sign flip is the methodological point: every condition is applied after
+> the centre crop, because without it a perturbation in pixels partly encodes
+> the label (real images are 1024², generated 512²).
+>
+> On calibration: Platt scaling made it worse, which is what you expect when
+> the rate is non-monotone rather than mis-scaled. And the fitted fusion moves
+> weight to frequency, the signal we argue is reading content. Adopting it
+> would fit the confound.
+
+---
+
 ## 7 — Limitations
 
 **Dataset (all three inflate the numbers):** zero EXIF · every real image is
@@ -209,7 +246,8 @@ CPU, ~47 s for a 13-frame clip.
 
 1. **Resolution- and content-matched evaluation set** — the prerequisite for
    settling finding (b) and for any reweighting
-2. **Fit the weights** against that set, then revisit the threshold band
+2. **Fit the weights** against that set (a fit on the current set was measured
+   and declined, §13 of REPORT.md), then revisit the threshold band
 3. **Real C2PA parsing** — report the signing authority, not merely that a
    manifest exists
 4. **Video at scale** — Track A has no video; the frame path is barely measured

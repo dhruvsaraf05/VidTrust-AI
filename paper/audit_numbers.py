@@ -203,6 +203,20 @@ if MATCHED["jpeg30"]["classifier_mean"]["generated"] >= config.THRESHOLD_AI_GENE
     failures.append("the q30 mean generated score no longer falls below the "
                     "AI_GENERATED threshold -- section VI-A's mechanism is stale")
 
+# Section VI-A, last sentence: light degradation raises false alarms. This
+# replaced "rescaling costs nothing", which was read off the detections column
+# alone and ignored the real images flagged.
+claim("noise2 mean score real", MATCHED["noise2"]["classifier_mean"]["real"], "{:.3f}")
+claim("noise2 real flagged", MATCHED["noise2"]["at_frozen_band"]["confusion"]["fp"], "{:d} of 200")
+claim("downscale50 real flagged", MATCHED["downscale50"]["at_frozen_band"]["confusion"]["fp"],
+      "flags {:d}")
+checks += 1
+if not (MATCHED["noise2"]["at_frozen_band"]["confusion"]["fp"]
+        > MATCHED["clean"]["at_frozen_band"]["confusion"]["fp"]
+        < MATCHED["downscale50"]["at_frozen_band"]["confusion"]["fp"]):
+    failures.append("light noise / halving no longer raise false alarms over clean "
+                    "-- section VI-A's last sentence is stale")
+
 # Section VI-B: the uncontrolled arm inverts the sign on two of three.
 flips = 0
 for condition in ("jpeg50", "noise10", "messaging"):

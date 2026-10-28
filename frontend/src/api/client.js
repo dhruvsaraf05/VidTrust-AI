@@ -111,6 +111,50 @@ export async function health() {
 }
 
 /**
+ * The Reliability Card for a file: no model runs, so this is fast and is
+ * fired beside analyze() rather than after it. Resolves to the card or null.
+ *
+ * Kept OUT of the analyze() result on purpose: RawResponse shows that result
+ * as the unedited /api/analyze body, and merging this in would make it lie.
+ */
+export async function reliability(file) {
+  const form = new FormData()
+  form.append('file', file)
+  try {
+    const response = await axios.post(`${API_BASE}/api/reliability`, form, {
+      timeout: 15000,
+    })
+    return response.data.reliability ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The evidence behind each signal for one image: classifier heatmap, FFT
+ * spectrum, and the metadata fields the provenance scan read. Same
+ * always-resolves shape as analyze().
+ */
+export async function explain(file) {
+  const form = new FormData()
+  form.append('file', file)
+  try {
+    const response = await axios.post(`${API_BASE}/api/explain`, form, { timeout: 0 })
+    return { ok: true, data: response.data }
+  } catch (error) {
+    const body = error.response?.data
+    if (body && typeof body.error === 'string') {
+      return { ok: false, error: body.error, message: body.message ?? '' }
+    }
+    return {
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: `Could not reach the backend at ${API_BASE}. Is it running?`,
+    }
+  }
+}
+
+/**
  * Analyse media at a URL. Same response shape as analyze(), plus a `source`
  * object -- so every result component downstream works unchanged.
  *

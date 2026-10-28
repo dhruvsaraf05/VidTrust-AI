@@ -41,7 +41,22 @@ const HINTS = [
   'Fusing signals',
 ]
 
-export default function UrlZone({ onAnalyze, onInputChanged, busy, live }) {
+/**
+ * The caption states the backend's real limits, read from /api/health. Before
+ * health answers (or with an older backend) it falls back to wording that
+ * claims no specific number rather than a stale one.
+ */
+function limitsCaption(limits) {
+  if (!limits) return 'Public links · capped at 720p · limits load from the backend'
+  const minutes = Math.round(limits.max_duration_s / 60)
+  const duration = minutes >= 1 ? `max ${minutes} min` : `max ${limits.max_duration_s} s`
+  const session = limits.signed_in_hosts?.length
+    ? `signed-in session used for ${limits.signed_in_hosts.join(', ')} only`
+    : 'no login or cookies'
+  return `${duration} · capped at ${limits.max_height}p · ${session}`
+}
+
+export default function UrlZone({ onAnalyze, onInputChanged, busy, live, limits }) {
   const [url, setUrl] = useState('')
 
   return (
@@ -70,7 +85,7 @@ export default function UrlZone({ onAnalyze, onInputChanged, busy, live }) {
         />
 
         <p className="label label-faint mt-3">
-          Public links only · max 60 s · capped at 720p · no login or cookies
+          {limitsCaption(limits)}
         </p>
 
         {busy && <ProgressLine hints={HINTS} />}

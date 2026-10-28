@@ -69,6 +69,30 @@ not the HTTP code.
 This is the only place `MODEL_UNAVAILABLE` ever appears. `/api/analyze` never
 returns it.
 
+Health also carries a `url` block (`max_duration_s`, `max_height`,
+`signed_in_hosts`), which the link input's caption reads instead of
+hardcoding limits that drift.
+
+`POST /api/reliability`: multipart, single field `file`. **No model runs.**
+Returns `{ "filename", "reliability": {...} }`, the Reliability Card. It reads
+the file's condition (format, estimated JPEG quality, surviving EXIF), maps it
+to the nearest condition in `robustness.json`, and quotes the generated and
+real images flagged there next to clean originals, with caveats. When it
+cannot read the file it returns `available: false` and a `detail`, still with
+200. `/api/analyze-url` carries the same object as `reliability`, beside
+`source`, because the downloaded file is gone once that request ends.
+
+`POST /api/explain`: multipart, images only. Returns `{ "id", "filename",
+"saliency", "spectrum", "provenance" }`. `spectrum` is the FFT picture the
+frequency score is computed from. `provenance` lists every metadata field the
+scan read and which one matched. `saliency` is a Grad-CAM heatmap with a
+`faithfulness` summary attached. **On this checkpoint `saliency.available` is
+always false**: measured against occlusion over 20 images its agreement is
+median ρ −0.02, below the 0.3 floor, so it declines with a reason (REPORT.md
+§14).
+
+The `/api/analyze` body is unchanged by all of the above.
+
 ## Things the frontend should expect
 
 - `processing_time_ms` covers the whole request including upload spooling.

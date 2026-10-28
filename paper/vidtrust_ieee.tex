@@ -502,8 +502,9 @@ recompression is not an attack; it is what happens to every image passing
 through a messaging application. That realistic composite (long edge resampled
 to 1080 in either direction, then JPEG~70) lands at 122 detections of 200 with
 AUC 0.9623, \emph{higher} than clean. Under noise $\sigma{=}10$ only 75
-detections remain. Rescaling costs nothing, the internal resize to 512
-absorbing it.
+detections remain. Light degradation fails the other way: noise
+$\sigma{=}2$ lifts the mean classifier score on real images from 0.225 to
+0.511, flagging 97 of 200, and halving the resolution flags 71.
 
 \subsection{Without the Control, the Conclusion Inverts}
 

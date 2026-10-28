@@ -29,12 +29,17 @@ import numpy as np
 from PIL import Image
 
 import config
+from detectors.redact import redact
 
 logger = logging.getLogger(__name__)
 
 
-def high_frequency_ratio(image: Image.Image) -> float:
-    """Fraction of total spectral energy outside the central low-freq disc."""
+def _energy(image: Image.Image) -> tuple[np.ndarray, np.ndarray]:
+    """Centred power spectrum and the low-frequency disc mask.
+
+    Shared by the score and the picture, so the picture shows exactly the
+    spectrum and disc the score was computed from.
+    """
     grey = image.convert("L").resize(
         (config.FFT_IMAGE_SIZE, config.FFT_IMAGE_SIZE), Image.BILINEAR
     )
@@ -52,7 +57,12 @@ def high_frequency_ratio(image: Image.Image) -> float:
     yy, xx = np.ogrid[:n, :n]
     radius = np.sqrt((yy - centre) ** 2 + (xx - centre) ** 2)
 
-    low_freq_mask = radius <= (config.FFT_LOW_FREQ_RADIUS * n)
+    return energy, radius <= (config.FFT_LOW_FREQ_RADIUS * n)
+
+
+def high_frequency_ratio(image: Image.Image) -> float:
+    """Fraction of total spectral energy outside the central low-freq disc."""
+    energy, low_freq_mask = _energy(image)
 
     total = float(energy.sum())
     if total <= 0.0:
@@ -79,7 +89,7 @@ def analyze(image: Image.Image) -> dict:
         return {
             "score": 0.0,
             "available": False,
-            "detail": f"FFT failed: {exc}",
+            "detail": f"FFT failed: {redact(exc)}",
         }
 
     score = _to_score(ratio)
@@ -95,4 +105,62 @@ def analyze(image: Image.Image) -> dict:
         "score": round(score, 4),
         "available": True,
         "detail": f"{wording} (ratio {ratio:.3f}, provisional scale)",
+    }
+
+
+# Display size for the spectrum picture. Half the transform size keeps the PNG
+# small; the disc is still 8 px across at this scale.
+SPECTRUM_DISPLAY = 256
+
+
+def spectrum(image: Image.Image) -> dict:
+    """The log-magnitude spectrum the score is computed from, as a PNG.
+
+    Low frequencies at the centre, the low-frequency disc outlined. The score
+    is the share of energy OUTSIDE that disc, so the picture shows directly
+    what "high-frequency energy" means here. It is a picture of the
+    measurement, not a picture of AI evidence: see the module docstring.
+    Never raises.
+    """
+    import base64
+    import io
+
+    from PIL import ImageDraw
+
+    try:
+        energy, low = _energy(image)
+        total = float(energy.sum())
+        ratio = float(energy[~low].sum()) / total if total > 0 else 0.0
+
+        logged = np.log1p(energy)
+        lo, hi = np.percentile(logged, [1.0, 99.9])
+        scaled = np.clip((logged - lo) / (hi - lo if hi > lo else 1.0), 0.0, 1.0)
+        picture = Image.fromarray((scaled * 255).astype(np.uint8), mode="L")
+        picture = picture.resize((SPECTRUM_DISPLAY, SPECTRUM_DISPLAY),
+                                 Image.BILINEAR).convert("RGB")
+
+        centre = SPECTRUM_DISPLAY / 2.0
+        r = config.FFT_LOW_FREQ_RADIUS * SPECTRUM_DISPLAY
+        ImageDraw.Draw(picture).ellipse(
+            (centre - r, centre - r, centre + r, centre + r),
+            outline=(214, 140, 40), width=1)
+
+        buffer = io.BytesIO()
+        picture.save(buffer, format="PNG")
+    except Exception as exc:
+        logger.exception("Spectrum rendering failed")
+        return {"available": False, "detail": f"FFT failed: {redact(exc)}",
+                "spectrum_png_b64": None, "ratio": None, "score": None}
+
+    return {
+        "available": True,
+        "detail": (
+            f"{ratio:.1%} of spectral energy lies outside the central disc "
+            f"(radius {config.FFT_LOW_FREQ_RADIUS * config.FFT_IMAGE_SIZE:.0f} px "
+            f"of {config.FFT_IMAGE_SIZE}). Content, compression and resizing "
+            "move this more than the generator does; the scale is unfitted."
+        ),
+        "spectrum_png_b64": base64.b64encode(buffer.getvalue()).decode("ascii"),
+        "ratio": round(ratio, 4),
+        "score": round(_to_score(ratio), 4),
     }

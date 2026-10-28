@@ -49,7 +49,7 @@ cd paper && python order_references.py --check
 cd paper && python check_fig1_layout.py
 ```
 
-- `audit_numbers.py`: 172 assertions that every number in every table and in
+- `audit_numbers.py`: 176 assertions that every number in every table and in
   the prose matches the evaluation outputs (`ablation.json`,
   `robustness.json`, `calibration.json`, the metrics JSON and per-signal CSVs,
   `failure_analysis.json`, `config.py`). It also asserts the structural facts

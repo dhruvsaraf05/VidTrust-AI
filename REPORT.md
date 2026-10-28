@@ -513,17 +513,24 @@ per generator, individual slip rates are coarse — one image is 25 points.
   who signed it or whether the claim chain validates.
 - Video container metadata uses the same bounded raw scan rather than proper
   MP4 atom parsing.
-- Clips longer than 60 seconds are analysed over their first 60 seconds only;
-  the response says so. Spreading the same 60-frame budget across the full
-  duration would be a better use of it.
+- Long clips are sampled across their whole duration: the 60-frame budget is
+  spread evenly, so a 10-minute video is read one frame every 10 s rather than
+  over its first minute only. Short clips sample exactly as before (a 13 s clip
+  still gives 13 frames, covered by a test). The cost is per sampled frame, so
+  the URL duration cap rose from 60 s to 10 minutes. A 60-frame clip has still
+  not been timed end to end.
 - **URL ingest downloads third-party platform media.** YouTube's Terms of
   Service restrict downloading, and other platforms have comparable terms. It
   is used here for academic research on short public clips, retaining nothing —
-  media is deleted in a `finally` block on every path. No authentication is
-  attempted: no cookies, no credentials, no workaround for login walls. In
-  practice **Instagram fails consistently** behind its login wall and is not
-  demonstrable; YouTube works. That asymmetry is a property of platform access
-  policy, not of the detector.
+  media is deleted in a `finally` block on every path. Instagram serves nothing
+  to an anonymous client (a made-up post ID and a real one fail identically),
+  so the link path now uses **the operator's own signed-in browser session, for
+  Instagram, Facebook and Threads only**; every other host is fetched
+  anonymously, so an arbitrary URL is never handed the cookie jar. That is
+  automated access which Instagram's terms restrict, and a session cookie is a
+  credential: it belongs on a local demo machine, never a shared server.
+  Setting `URL_BROWSER_COOKIES = None` in `config.py` turns it off. Whether
+  reels now fetch reliably end to end has not been measured in this report.
 - **Provenance is structurally unavailable for every URL.** Platforms re-encode
   on upload, discarding EXIF/XMP/C2PA, so the metadata signal renormalises out
   on every URL analysis. The interface says so explicitly rather than reporting
@@ -542,3 +549,192 @@ per generator, individual slip rates are coarse — one image is 25 points.
 - The frequency signal's constants bound the range where the ratio moves and
   encode no measured AI-versus-real boundary. Its score means "how
   high-frequency is this image", not "is this image AI".
+
+## 12. The operating envelope: robustness to real-world degradation
+
+Every figure above is on images as distributed. Real media is recompressed,
+resized and pushed through messaging apps, so this section measures what
+happens then. `perturbations.py` defines eleven degradations;
+`run_robustness_sweep.py` applies each to all 400 Track A images **after** the
+§6 centre crop, so both classes enter every condition with identical processing
+history (order: crop, perturb, save losslessly; recorded in each metrics JSON).
+`robustness.py` reads the per-condition CSVs and writes `robustness.json`. It
+runs no inference.
+
+Provenance is unavailable on all 400 files throughout, so these are two-signal
+figures. "Flagged" is the number of generated images labelled `AI_GENERATED`
+at the deployed 0.35/0.65 band, out of 200.
+
+| Condition | Ensemble AUC | Classifier AUC | Frequency AUC | Generated flagged | Real flagged |
+|---|---|---|---|---|---|
+| clean (crop only) | 0.9487 | 0.8947 | 0.9129 | 172 | 39 |
+| JPEG q95 | 0.9097 | 0.8177 | 0.9128 | 149 | 40 |
+| JPEG q75 | 0.9314 | 0.7950 | 0.9132 | 129 | 19 |
+| JPEG q50 | 0.9328 | 0.7845 | 0.9119 | 110 | 14 |
+| JPEG q30 | 0.9355 | 0.7683 | 0.9098 | **95** | 5 |
+| downscale ×0.75 | 0.9480 | 0.8956 | 0.9068 | 176 | 46 |
+| downscale ×0.50 | 0.9306 | 0.8681 | 0.9016 | 179 | 71 |
+| crop to 256² | 0.9157 | 0.8488 | 0.9117 | 150 | 37 |
+| noise σ=2 | 0.9219 | 0.8437 | 0.9117 | 182 | 97 |
+| noise σ=5 | 0.9107 | 0.8159 | 0.9046 | 132 | 25 |
+| noise σ=10 | 0.9344 | 0.7446 | 0.8818 | **75** | 0 |
+| messaging app | 0.9623 | 0.8588 | 0.9068 | 122 | 5 |
+
+
+### 12.1 AUC is nearly blind to the failure that matters
+
+From clean to JPEG q30 the ensemble AUC moves 0.9487 → 0.9355, a change of
+0.013 that reads as "robust". Over the same range the generated images actually
+flagged fall **172 → 95 of 200, a 45% loss of detections**. The per-signal dump
+shows why: the mean classifier score on generated images falls 0.862 → 0.485,
+below the 0.65 threshold, while on real images it falls further, 0.225 →
+0.046. The *ordering* survives, which is all AUC measures, but the generated
+distribution slides out of `AI_GENERATED` into `UNCERTAIN`. Precision rises,
+0.8152 → 0.9500: the degraded system is not making more mistakes, it is
+declining to answer.
+
+Mild recompression is not an attack; it is what every messaging app does. The
+messaging composite (long edge to 1080 in **either** direction, then JPEG 70)
+keeps AUC at 0.9623, higher than clean, while flagging 122 of 200. Under noise
+σ=10 only 75 remain.
+
+### 12.1a Light degradation fails the other way: false alarms
+
+Reading detections alone, rescaling and light noise look harmless, even
+helpful: 176 and 179 flagged after downscaling, 182 after noise σ=2, all
+above clean's 172. The real-image column says otherwise. These conditions push
+**real** images up the classifier's scale:
+
+| Condition | Mean classifier score, real | Real flagged | Accuracy |
+|---|---|---|---|
+| clean | 0.225 | 39 | 0.8384 |
+| downscale ×0.50 | 0.393 | 71 | 0.7679 |
+| noise σ=2 | **0.511** | **97** | 0.7096 |
+| noise σ=5 | 0.155 | 25 | 0.7683 |
+
+So the failure has two directions. Light resampling or sensor-like noise makes
+real photographs read as generated (at σ=2, nearly half of the 200 real
+images are flagged). Heavier compression or noise makes generated images read
+as real. Noise is not monotone: σ=2 lifts the real-image mean, while σ=5 and
+σ=10 lower both classes. The earlier draft of this analysis, and the first
+draft of the paper, said rescaling "costs nothing"; that was read off the
+detections column and is wrong.
+
+### 12.2 Without the control, the conclusion inverts
+
+Three conditions were also run on the uncontrolled set, at native resolutions.
+Classifier ΔAUC against the matching clean baseline:
+
+| Condition | With the crop control | Without |
+|---|---|---|
+| JPEG q50 | −0.110 | **+0.029** |
+| messaging | −0.036 | **+0.004** |
+| noise σ=10 | −0.150 | −0.300 |
+
+Two of three change sign. A protocol that degraded images as they come would
+report that compression and platform re-encoding *improve* this detector. The
+mechanism is §6 again: noise on a 1024² real image is partly averaged away by
+the internal resize to 512, while on a native 512² generated image it is not,
+so the degradation itself carries the label.
+
+### 12.3 The frequency signal is compression-invariant, which points to content
+
+Across all four JPEG levels the frequency AUC spans 0.9098–0.9132, against
+0.9129 clean. The prediction was the opposite. If the signal read the spectral
+trace of generative up-sampling, JPEG — which quantises exactly those
+high-frequency coefficients — should erase it. A statistic that survives
+quantisation of the band it claims to read is not reading that band's
+artefacts. The economical explanation is gross image structure: smooth aligned
+FFHQ portraits against detailed generated illustration. This strengthens §5's
+confound and the §8 caution. The signal stays labelled unfitted; if a
+content-matched set confirms this, setting its weight to zero is the correct
+outcome.
+
+### 12.4 Where this reaches the user
+
+The Reliability Card (`reliability.py`, `POST /api/reliability`, and a
+`reliability` block on `/api/analyze-url`) uses these figures. It reads the
+input's condition with no model (format, estimated JPEG quality from the
+quantisation tables, surviving EXIF, whether a platform delivered it), maps it
+to the nearest measured condition, and shows the generated and real images
+flagged there next to clean originals. It leads with detections, not AUC, for
+the reason in §12.1, and states the caveats: still images only, an upper bound
+given §5, two-signal, unfitted thresholds.
+
+## 13. The confidence is not a probability
+
+`calibration.py` measures whether the fused confidence can be read as P(AI).
+It cannot.
+
+- **ECE 0.1154** on the held-out half (0.1054 over all 400).
+- **The empirical rate is not monotone in confidence.** Over all 400 files, the
+  0.7–0.8 bin holds 32 files of which 31.2% are generated; the 0.1–0.2 bin
+  holds 28 of which 46.4% are.
+- **Platt scaling makes it worse**, fitted on the selection half and scored on
+  the held-out half: ECE 0.1363 and Brier 0.1241, against 0.1154 and 0.1187
+  raw. That is expected when the rate is non-monotone rather than merely
+  mis-scaled, and no monotone recalibration can fix it.
+
+So the confidence is a **ranking score**. The interface shows it as a position
+on a scale, not as "87% probability", and should keep doing so.
+
+**Fitted fusion, reported and not adopted.** Logistic regression over the two
+available per-signal scores, under leave-one-generator-out cross-validation
+(50 folds), reaches out-of-fold AUC **0.9674** against the hand-chosen
+weights' 0.9487. The implied relative weights are 0.26 classifier and
+0.74 frequency, i.e. a strong shift toward the signal §12.3 argues is
+measuring content. Adopting it would fit the confound, the same reasoning by
+which §4.3 declined the better thresholds. `calibration.json` records it with
+`"adopted": false`.
+
+## 14. Explaining a verdict, and a heatmap we declined to draw
+
+`POST /api/explain` returns the evidence behind each signal for one image,
+shown in the interface under "Show evidence":
+
+- **Frequency:** the log-magnitude spectrum the score is computed from, with
+  the low-frequency disc outlined. It is rendered by the same function that
+  computes the score, and a test asserts the two agree.
+- **Provenance:** every metadata field the scan read (EXIF, XMP, embedded
+  text), which one matched a generator signature, and the raw-scan result.
+  The collector was restructured so the drill-down and the signal read the
+  same fields; a test asserts every `samples/` file still gives exactly its
+  committed provenance reading.
+- **Classifier:** a Grad-CAM heatmap, **not drawn**, for the reason below.
+
+### 14.1 Measured before shown
+
+`saliency_faithfulness.py` compares the stage-2 Grad-CAM against occlusion
+(blank each 32×32 cell of the 256×256 input and record the drop in the
+'artificial' logit) on 20 evaluation images, 10 per class, centre-cropped.
+Agreement is Spearman ρ over the 64 cells.
+
+| | All 20 | Generated | Real |
+|---|---|---|---|
+| median ρ | **−0.02** | −0.05 | +0.03 |
+| range | −0.47 to +0.76 | −0.47 to +0.76 | −0.22 to +0.34 |
+| ρ > 0 | 9 | 3 | 6 |
+| flatness gate would draw | 16 | 9 | 7 |
+| … of which ρ > 0 | 8 | 3 | 5 |
+
+The heatmap is no better than chance at locating what the classifier responds
+to. The flatness gate that was meant to stop a meaningless map does not help:
+it rejects *flat* maps, not *wrong* ones, and the maps it lets through agree
+half the time. So `explain()` now has a faithfulness gate first: below a
+measured median of ρ = 0.3 (PROVISIONAL, a judgement of "clearly better than
+chance", not fitted), no map is drawn and the response says why. That also
+skips the gradient pass, so the panel is faster. A map that looks like an
+explanation without being one would be the most persuasive overclaim this
+project could make.
+
+### 14.2 A claim this corrected
+
+An earlier note, from one image, said the classifier's evidence was "spatially
+diffuse", because the worst single patch cost about 10% of the logit margin.
+Twenty images do not support that. On 3 of 10 generated images, one cell moves
+the logit by 1.5 to 3.7. (The first run also reported a "share of the logit"
+that exceeded 5 and went negative; the raw 'artificial' logit is often near
+zero, so that ratio was meaningless and was replaced by the raw drop.) Whether
+a large single-cell drop is evidence, or the model reacting to an unnatural
+grey square, occlusion cannot settle. What the study does settle is that
+Grad-CAM does not find those cells.

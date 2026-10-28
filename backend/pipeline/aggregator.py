@@ -14,6 +14,7 @@ from PIL import Image
 
 import config
 from detectors import frequency_detector, metadata_detector, model_detector
+from detectors.redact import redact
 from pipeline.video_sampler import sample_frames
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ def analyze_video(path: str) -> dict:
             model_result = {
                 "score": 0.0,
                 "available": False,
-                "detail": f"Per-frame inference failed: {exc}",
+                "detail": f"Per-frame inference failed: {redact(exc)}",
             }
 
     usable = [s for s in frame_scores if s is not None]

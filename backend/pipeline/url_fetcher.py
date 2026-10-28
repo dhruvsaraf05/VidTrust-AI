@@ -19,9 +19,12 @@ ffmpeg is not assumed to be present. yt-dlp merges separate video and audio
 streams with ffmpeg, so the format selector deliberately asks for a single
 pre-muxed file. Audio is irrelevant here anyway -- the pipeline samples frames.
 
-No authentication of any kind is attempted: no cookies, no login, no
-workarounds. A site that requires a session simply fails with
-URL_FETCH_FAILED, which is the honest outcome.
+Authentication is scoped, not general. A browser session (or cookie file) is
+used only for the hosts in config.URL_COOKIE_HOSTS, which serve nothing to an
+anonymous client; every other URL is fetched anonymously. With both
+URL_BROWSER_COOKIES and URL_COOKIE_FILE set to None, no credentials are used at
+all and a login-walled site fails with URL_FETCH_FAILED. See config.py for why
+this was enabled and what it costs.
 """
 
 from __future__ import annotations

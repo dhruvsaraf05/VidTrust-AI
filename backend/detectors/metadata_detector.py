@@ -78,26 +78,29 @@ def _scan_raw_bytes(path: str) -> str:
         return ""
 
 
-def _collect_image_text(path: str) -> tuple[list[str], bool]:
-    """Gather candidate metadata strings from an image.
+def _collect_fields(path: str) -> tuple[list[dict], bool]:
+    """Every metadata field the scan reads, in scan order.
 
-    Returns (texts, has_camera_exif).
+    Returns (fields, has_camera_exif); each field is
+    {"source", "key", "value"}. analyze() matches against exactly these, and
+    evidence() shows exactly these, so the drill-down cannot drift from what
+    the signal actually looked at.
     """
-    texts: list[str] = []
+    fields: list[dict] = []
     has_camera_exif = False
 
     try:
         with Image.open(path) as img:
             # PNG tEXt/iTXt chunks -- this is where Automatic1111 / ComfyUI
-            # write their full generation parameters.
+            # write their full generation parameters. The XMP packet (Adobe
+            # Content Credentials, Firefly, many others) also arrives here, as
+            # the "XML:com.adobe.xmp" key.
             for key, value in (img.info or {}).items():
                 if isinstance(value, (str, bytes)):
-                    texts.append(f"{key}: {_decode(value)}")
-
-            # XMP packet (Adobe Content Credentials, Firefly, many others).
-            xmp = (img.info or {}).get("XML:com.adobe.xmp")
-            if xmp:
-                texts.append(_decode(xmp))
+                    source = {"XML:com.adobe.xmp": "XMP",
+                              "exif": "EXIF block"}.get(key, "Embedded text")
+                    fields.append({"source": source, "key": str(key),
+                                   "value": _decode(value)})
 
             exif = None
             try:
@@ -110,7 +113,10 @@ def _collect_image_text(path: str) -> tuple[list[str], bool]:
                 model = exif.get(_TAG_NAMES.get("Model", -1))
                 if make and model:
                     has_camera_exif = True
-                    texts.append(f"Make: {_decode(make)} Model: {_decode(model)}")
+                    fields.append({"source": "EXIF", "key": "Make",
+                                   "value": _decode(make)})
+                    fields.append({"source": "EXIF", "key": "Model",
+                                   "value": _decode(model)})
 
                 for tag_name in config.EXIF_TEXT_TAGS:
                     tag_id = _TAG_NAMES.get(tag_name)
@@ -118,11 +124,18 @@ def _collect_image_text(path: str) -> tuple[list[str], bool]:
                         continue
                     value = exif.get(tag_id)
                     if value:
-                        texts.append(f"{tag_name}: {_decode(value)}")
+                        fields.append({"source": "EXIF", "key": tag_name,
+                                       "value": _decode(value)})
     except Exception as exc:
         logger.warning("Could not read image metadata from %s: %s", path, exc)
 
-    return texts, has_camera_exif
+    return fields, has_camera_exif
+
+
+def _collect_image_text(path: str) -> tuple[list[str], bool]:
+    """The fields as "key: value" strings, which is what signatures match."""
+    fields, has_camera_exif = _collect_fields(path)
+    return [f"{f['key']}: {f['value']}" for f in fields], has_camera_exif
 
 
 def analyze(path: str, media_type: str) -> dict:
@@ -176,4 +189,43 @@ def analyze(path: str, media_type: str) -> dict:
         "score": 0.0,
         "available": False,
         "detail": "No EXIF/XMP/C2PA metadata found (commonly stripped on upload)",
+    }
+
+
+# Long values (an XMP packet, a ComfyUI workflow) are cut for display. The
+# signature match still runs on the full text.
+EVIDENCE_VALUE_CHARS = 300
+
+
+def evidence(path: str, media_type: str) -> dict:
+    """What the provenance scan read, field by field, and what matched.
+
+    The one-line `detail` on the signal is a conclusion; this is the evidence
+    behind it, so a viewer can check it rather than take it on trust.
+    """
+    fields: list[dict] = []
+    if media_type == "image":
+        collected, _ = _collect_fields(path)
+        for field in collected:
+            value = field["value"]
+            matched = _match_signature(f"{field['key']}: {value}")
+            # A raw block (JPEG's whole EXIF segment, an ICC profile) is
+            # scanned as text but would display as mojibake.
+            printable = sum(ch.isprintable() or ch in "\n\t" for ch in value)
+            if value and printable / len(value) < 0.9:
+                shown, truncated = f"binary block, {len(value)} bytes", False
+            else:
+                shown = value[:EVIDENCE_VALUE_CHARS]
+                truncated = len(value) > EVIDENCE_VALUE_CHARS
+            fields.append({**field, "value": shown, "truncated": truncated,
+                           "matched": matched})
+
+    raw = _scan_raw_bytes(path)
+    return {
+        "signal": analyze(path, media_type),
+        "fields": fields,
+        "raw_scan": {
+            "bytes_each_end": config.RAW_SCAN_BYTES,
+            "matched": _match_signature(raw, config.RAW_SCAN_SIGNATURES) if raw else None,
+        },
     }

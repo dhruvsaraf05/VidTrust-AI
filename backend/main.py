@@ -28,7 +28,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import config
-from detectors import model_detector
+import reliability
+from detectors import frequency_detector, metadata_detector, model_detector, saliency
 from pipeline import aggregator
 from pipeline.url_fetcher import UrlError, fetch as fetch_url
 from pipeline.video_sampler import VideoReadError
@@ -162,13 +163,18 @@ async def validation_error_handler(
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Anything we did not anticipate still leaves via the contract shape."""
+    """Anything we did not anticipate still leaves via the contract shape.
+
+    The client gets the exception TYPE only. Its text used to be included, and
+    an OSError's text is routinely a server path (invariant 5); the full
+    exception is in the server log.
+    """
     logger.exception("Unhandled error on %s", request.url.path)
     return JSONResponse(
         status_code=500,
         content={
             "error": "PROCESSING_FAILED",
-            "message": f"Unexpected server error: {exc}",
+            "message": f"Unexpected server error ({type(exc).__name__}).",
         },
     )
 
@@ -200,6 +206,16 @@ async def health() -> dict:
         },
         "max_file_bytes": config.MAX_FILE_BYTES,
         "accepted_extensions": sorted(config.ALLOWED_EXTENSIONS),
+        # The link path's real limits, so the interface states them instead of
+        # hardcoding a copy that drifts (it said "max 60 s, no cookies" long
+        # after both stopped being true).
+        "url": {
+            "max_duration_s": config.URL_MAX_DURATION_S,
+            "max_height": config.URL_MAX_HEIGHT,
+            "signed_in_hosts": (sorted(config.URL_COOKIE_HOSTS)
+                                if config.URL_COOKIE_FILE or config.URL_BROWSER_COOKIES
+                                else []),
+        },
     }
 
 
@@ -356,6 +372,10 @@ async def analyze_url(body: UrlRequest) -> JSONResponse:
             "signals": result["signals"],
             "frames": result["frames"],
             "source": source,
+            # Additive, like `source`: the measured reliability for the
+            # condition this media arrived in. Computed here because the
+            # downloaded file is deleted when the request ends.
+            "reliability": reliability.card(str(media_path), "video", source),
         }
         logger.info(
             "url %s (%s) -> %s (%.2f) in %dms",
@@ -370,3 +390,95 @@ async def analyze_url(body: UrlRequest) -> JSONResponse:
         # Same discipline as the upload path: the temp media never outlives
         # the request, whatever happened.
         shutil.rmtree(workspace, ignore_errors=True)
+
+
+@app.post("/api/explain")
+async def explain(file: UploadFile = File(...)) -> JSONResponse:
+    """Additive: the evidence behind each signal's reading, for one image.
+
+    `saliency` is the classifier heatmap, `spectrum` the FFT picture the
+    frequency score is computed from, `provenance` every metadata field the
+    scan read and which one matched.
+
+    Not part of the frozen /api/analyze contract, which is untouched. Images
+    only: a per-frame heatmap for video would multiply an already slow request.
+
+    `saliency.available` is false whenever the map is not worth drawing. On
+    this checkpoint that is always: the heatmap was measured against occlusion
+    and agrees no better than chance (median rho -0.02 over 20 images), so the
+    faithfulness gate in detectors/saliency.py declines and says why.
+    `saliency.faithfulness` carries the measurement either way.
+    """
+    filename = file.filename or "upload"
+    extension = os.path.splitext(filename)[1].lower()
+
+    if extension not in config.IMAGE_EXTENSIONS:
+        raise api_error(
+            "UNSUPPORTED_FORMAT",
+            f"'{extension or filename}' cannot be explained. Images only: "
+            + ", ".join(sorted(config.IMAGE_EXTENSIONS)),
+        )
+
+    temp_path = await _spool_upload(file, extension)
+    try:
+        def run() -> dict:
+            from PIL import Image
+            with Image.open(temp_path) as image:
+                rgb = image.convert("RGB")
+            return {
+                "saliency": {**saliency.explain(rgb),
+                             "faithfulness": saliency.faithfulness()},
+                "spectrum": frequency_detector.spectrum(rgb),
+                "provenance": metadata_detector.evidence(temp_path, "image"),
+            }
+
+        result = await run_in_threadpool(run)
+    except Exception as exc:
+        logger.exception("Explain failed for %s", filename)
+        raise api_error(
+            "PROCESSING_FAILED",
+            f"Could not explain '{filename}': {type(exc).__name__}. "
+            "The file may be corrupt or truncated.",
+        ) from exc
+    finally:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+
+    return JSONResponse(content={
+        "id": uuid.uuid4().hex[:6],
+        "filename": filename,
+        **result,
+    })
+
+
+@app.post("/api/reliability")
+async def reliability_card(file: UploadFile = File(...)) -> JSONResponse:
+    """Additive: how far the measured study says to trust a verdict on this file.
+
+    No model runs. Reads the file's condition (format, size, estimated JPEG
+    quality, surviving EXIF), maps it to the nearest condition in
+    robustness.json, and quotes what the system achieved there. The frontend
+    calls this beside /api/analyze, whose frozen body is untouched.
+    """
+    filename = file.filename or "upload"
+    extension = os.path.splitext(filename)[1].lower()
+    if extension not in config.ALLOWED_EXTENSIONS:
+        raise api_error(
+            "UNSUPPORTED_FORMAT",
+            f"'{extension or filename}' is not supported. Accepted: "
+            + ", ".join(sorted(config.ALLOWED_EXTENSIONS)),
+        )
+
+    temp_path = await _spool_upload(file, extension)
+    try:
+        media_type = "video" if extension in config.VIDEO_EXTENSIONS else "image"
+        result = await run_in_threadpool(reliability.card, temp_path, media_type)
+    finally:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+
+    return JSONResponse(content={"filename": filename, "reliability": result})
