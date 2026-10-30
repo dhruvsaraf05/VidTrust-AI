@@ -264,6 +264,15 @@ checks += 1
 if fitted["adopted"]:
     failures.append("the fitted fusion is now adopted, which contradicts the paper")
 
+# --- Section IX: Grad-CAM faithfulness ---------------------------------------
+faith = json.loads((BACKEND / "saliency_faithfulness.json").read_text(encoding="utf-8"))["overall"]
+claim("faithfulness images", faith["n"], "occlusion on {:d} images")
+claim("faithfulness rho", faith["rho_median"], "\\rho = {:.2f}")
+checks += 1
+if faith["rho_median"] >= 0.3:
+    failures.append("Grad-CAM now passes the 0.3 faithfulness floor -- section IX "
+                    "says the system draws no saliency map")
+
 # the live config must still match what the paper describes
 claim("weight model", config.WEIGHTS["model"], "{:.2f}")
 claim("weight metadata", config.WEIGHTS["metadata"], "{:.2f}")

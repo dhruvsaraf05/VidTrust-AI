@@ -4,8 +4,9 @@
 International Conference on Information Processing, VIT Pune).
 `vidtrust_ieee.pdf`: compiled output, **6 pages** (the limit is 4–6).
 
-Builds clean: no errors, no undefined references or citations, no overfull or
-underfull boxes. All 27 fonts are embedded and none is Type 3, which is what
+Builds clean: no errors, no undefined references or citations, no overfull boxes.
+Two underfull `\vbox` notices are column-level vertical stretch from balancing
+around the full-width figures, and are not visible on the page. All 27 fonts are embedded and none is Type 3, which is what
 IEEE PDF eXpress checks.
 
 ## Compile it
@@ -49,9 +50,9 @@ cd paper && python order_references.py --check
 cd paper && python check_fig1_layout.py
 ```
 
-- `audit_numbers.py`: 176 assertions that every number in every table and in
+- `audit_numbers.py`: 179 assertions that every number in every table and in
   the prose matches the evaluation outputs (`ablation.json`,
-  `robustness.json`, `calibration.json`, the metrics JSON and per-signal CSVs,
+  `robustness.json`, `calibration.json`, `saliency_faithfulness.json`, the metrics JSON and per-signal CSVs,
   `failure_analysis.json`, `config.py`). It also asserts the structural facts
   the argument depends on, for example that provenance is still unavailable on
   all 400 Track A files and that two of three uncontrolled conditions still
@@ -83,11 +84,14 @@ Venue names use IEEE Reference Guide abbreviations. Two caveats:
       Confirm who is an author, in what order, and that the guide wants to be
       listed. To make the guide the corresponding author, move
       `\IEEEauthorrefmark{1}` to his name and edit the `\thanks` footnote.
-- [ ] **Paper size.** The PDF is US Letter, IEEEtran's default. If the
-      conference asks for A4, add `a4paper` to the `\documentclass` options
-      and recheck the page count.
-- [ ] **Anonymisation.** Only if the venue turns out to be double-blind: strip
-      the author block and the repository references.
+- [x] **Venue rules** (VIT's `Author-submission-guidelines.pdf`, read 30 Oct
+      2026): IEEE format, 4–6 pages, at most 6 keywords, abstract at most 400
+      words, corresponding author clearly marked. The paper has 6 pages, 6
+      keywords and a 281-word abstract, and Dhruv is marked. No paper size is
+      specified, so it stays US Letter, the IEEE default. Review is not blind,
+      since the corresponding author must be named, so the author block stays.
+      Submission is through Microsoft CMT at
+      https://cmt3.research.microsoft.com/ICIP2027.
 
 ## After acceptance (camera-ready)
 

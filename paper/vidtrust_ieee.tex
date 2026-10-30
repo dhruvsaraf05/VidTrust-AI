@@ -58,16 +58,18 @@ Machine-Generated Media Detector}
 Yash Mahajan}
 \IEEEauthorblockA{\textit{Department of Information Technology} \\
 \textit{K.\,J.\ Somaiya School of Engineering} \\
+\textit{(Formerly K.\,J.\ Somaiya College of Engineering)} \\
 \textit{Somaiya Vidyavihar University}, Mumbai, India \\
-dhruvsaraf05@gmail.com}
+dhruv.saraf@somaiya.edu}
 \and
 \IEEEauthorblockN{Dr.\ Sanjay Vidhani}
 \IEEEauthorblockA{\textit{Department of Information Technology} \\
 \textit{K.\,J.\ Somaiya School of Engineering} \\
+\textit{(Formerly K.\,J.\ Somaiya College of Engineering)} \\
 \textit{Somaiya Vidyavihar University}, Mumbai, India \\
 sanjayvidhani@somaiya.edu}
 \thanks{\IEEEauthorrefmark{1}Corresponding author: Dhruv Saraf,
-dhruvsaraf05@gmail.com.}
+dhruv.saraf@somaiya.edu.}
 }
 
 \maketitle
@@ -93,9 +95,8 @@ decision band. Repeating three conditions \emph{without} the resolution control
 inverts the sign of the measured robustness ($\Delta$AUC $-0.110$ controlled
 against $+0.029$ uncontrolled under JPEG~50), so a naive protocol would report
 that compression improves the detector; and the frequency signal proves almost
-exactly compression-invariant, evidence against rather than for its being a
-synthesis cue, since the upsampling artefacts it is meant to measure are the
-first thing JPEG destroys. We argue that per-signal logging, ablation, and a
+exactly compression-invariant, evidence against its being a synthesis cue. We
+argue that per-signal logging, ablation, and a
 degradation sweep reported at the deployed threshold rather than by AUC alone
 should form a minimum reporting standard for fused detectors.
 \end{abstract}
@@ -150,11 +151,8 @@ The design is deliberately free of fitting: the classifier is a frozen,
 off-the-shelf model, and the fusion weights and thresholds were fixed by hand
 before any measurement, so no figure on the public set is optimised against
 that set. That is what lets the evaluation separate detection from dataset
-artefacts. Section~\ref{sec:calib} tests the alternative directly: a logistic
-meta-classifier fitted under 50-fold leave-one-generator-out cross-validation
-reaches ROC-AUC 0.9674 against 0.9487, but by moving weight onto the frequency
-cue that Section~\ref{sec:freq} argues is reading content, so we report it and
-do not adopt it. Because the public set's confounds are characterised rather
+artefacts; Section~\ref{sec:calib} reports a fitted fusion that scores higher
+and why we do not adopt it. Because the public set's confounds are characterised rather
 than removed, its absolute figures are an upper bound on field performance.
 
 %==============================================================================
@@ -191,9 +189,8 @@ artefacts, exploited by Durall~et~al.~\cite{durall2020} and
 Frank~et~al.~\cite{frank2020}; such cues are strong on the generators they were
 characterised on and fragile under compression and rescaling. The C2PA
 specification~\cite{c2pa} defines signed credentials that travel inside the
-file. Provenance is evidence about a file's history rather than an inference
-from its pixels, high-precision and low-recall by construction, and the
-literature treats it largely apart from detection; combining the two raises the
+file. Provenance is high-precision and low-recall by construction and is
+usually treated apart from detection; combining the two raises the
 availability problem that motivates this paper. Community
 Forensics~\cite{park2025} supplies per-image generator attribution, making
 per-generator failure analysis possible.
@@ -211,7 +208,8 @@ breakdown that produced it.
 \includegraphics[width=\textwidth]{fig1_architecture.pdf}
 \caption{Pipeline. Three independent signals are computed, then fused over only
 those that actually ran. Video is treated as images over time: frames are
-sampled at 1\,fps to a 60-frame cap and the classifier scores each one.}
+sampled at 1\,fps, or spread evenly over longer clips, to a 60-frame cap, and
+the classifier scores each one.}
 \label{fig:arch}
 \end{figure*}
 
@@ -341,7 +339,7 @@ card. Measured on the 12 labelled hand-collected images it was not merely weak
 but \emph{anti-correlated}: mean score 0.438 on generated images against 0.574
 on real photographs, scoring genuine iPhone originals at 0.998 ``artificial''
 and a commercially generated image at 0.003. No weight and no threshold can
-repair a signal that points the wrong way. Five cached candidates were then
+repair a signal that points the wrong way. Five off-the-shelf candidates were then
 scored over the identical files (Table~\ref{tab:models}), and the separation
 between best and worst is far larger than any fusion parameter could compensate
 for: for a fused detector, the choice of the heaviest component dominates the
@@ -372,10 +370,8 @@ manifest and one on a generator signature; the four camera originals carry
 genuine EXIF and score 0.0; and the five files routed through the messaging
 platform, four images and the video, report provenance unavailable, so
 \eqref{eq:fuse} renormalises over the other two signals. All 13 fused verdicts
-are correct and none abstains. This exercises each branch and the
-renormalisation path on real files, but it is not an accuracy estimate: the
-classifier alone also separates these files, and they are the set it was
-selected on.
+are correct and none abstains: a check of every branch and the
+renormalisation path on real files, not an accuracy estimate.
 
 \subsection{Track A Headline, the Control, and the Ablation}
 
@@ -432,8 +428,7 @@ ROC-AUC, full ensemble & \textbf{0.9196} & \textbf{0.9487} \\
 A detection score is only meaningful inside a stated operating envelope, and
 we measured ours. Eleven degradations are applied to every Track~A image
 \emph{after} the centre crop of Section~\ref{sec:normal}, so both classes enter
-each condition with identical processing history; the order (crop, perturb,
-save losslessly) is recorded with every run, and each condition re-evaluates
+each condition with identical processing history, and each condition re-evaluates
 all 400 images, 4800 inferences in total (Table~\ref{tab:robust},
 Fig.~\ref{fig:robust}).
 
@@ -496,15 +491,14 @@ distribution has slid out of the \texttt{AI\_GENERATED} band into
 is not making more mistakes, it is answering a different, much easier question
 and declining the rest.
 
-This is the practical finding. A detector reported only by AUC can appear
-robust to a transformation that removes nearly half its detections, and mild
-recompression is not an attack; it is what happens to every image passing
-through a messaging application. That realistic composite (long edge resampled
+Mild recompression is not an attack; it is what happens to every image
+passing through a messaging application. That realistic composite (long edge resampled
 to 1080 in either direction, then JPEG~70) lands at 122 detections of 200 with
 AUC 0.9623, \emph{higher} than clean. Under noise $\sigma{=}10$ only 75
-detections remain. Light degradation fails the other way: noise
-$\sigma{=}2$ lifts the mean classifier score on real images from 0.225 to
-0.511, flagging 97 of 200, and halving the resolution flags 71.
+detections remain. Light degradation fails the other way, into false alarms:
+noise $\sigma{=}2$ lifts the mean classifier score on real images from 0.225 to
+0.511 and labels 97 of 200 real photographs generated, against 39 clean, and
+halving the resolution flags 71.
 
 \subsection{Without the Control, the Conclusion Inverts}
 
@@ -566,9 +560,8 @@ confound, not synthesis.
 \label{sec:findings}
 %==============================================================================
 
-Both were invisible to unit tests and aggregate metrics, and both surfaced only
-because the harness records every signal's score \emph{and} availability flag
-per file, not just the fused verdict.
+Both surfaced only because the harness logs every signal's score \emph{and}
+availability flag per file, not just the fused verdict.
 
 \textbf{A three-character string inverted the provenance signal.} The generator
 signature list contained \texttt{"veo"}, and in a few hundred kilobytes of
@@ -613,11 +606,9 @@ plausibly intensifies. (iii)~The resolution asymmetry of
 Section~\ref{sec:normal}. Together these make Track~A's figures an upper bound,
 and are why no fitted parameter here is adopted.
 
-\textbf{Unfitted weights, doubly used Track~B.} $0.60/0.25/0.15$ were chosen by
-inspection before any measurement; that they now beat any single signal is
-evidence about the classifier, not the weights. Track~B shows each provenance
-branch working but not how often it works, and since it also selected the
-classifier, its perfect result is not an estimate.
+\textbf{Unfitted weights.} $0.60/0.25/0.15$ were chosen by inspection before
+any measurement; that they now beat any single signal is evidence about the
+classifier, not the weights.
 
 \textbf{Scope.} Real C2PA manifest parsing is not implemented, so the system
 reports that a manifest is present but never who signed it. Track~A is images
@@ -628,15 +619,37 @@ CPU-only baseline (4-core Intel i5-1135G7), in-process inference with the
 full-resolution camera original takes 4--6\,s end to end through the API.
 
 %==============================================================================
+\section{Future Scope}
+\label{sec:future}
+%==============================================================================
+
+\textbf{A matched evaluation set,} real and generated images sharing subject
+matter, resolution and processing history, would remove the confounds of
+Section~\ref{sec:limits}: the prerequisite for attributing the frequency
+signal's discrimination, fitting the weights, and recalibrating $c$.
+\textbf{Video} needs a labelled set of clips from current text-to-video
+generators, on which temporal cues such as the dispersion of per-frame scores
+can be measured. \textbf{Provenance} needs full C2PA parsing with signature
+verification, and media fetched from platform links, re-encoded and stripped,
+needs its own envelope, as does adversarial post-processing.
+
+\textbf{Per-input reliability.} Because the envelope is measured, a detector
+can estimate an input's condition, such as JPEG quality from its quantisation
+tables, and report the detection rate measured under the nearest condition
+beside its verdict; ours does, though its value to users is untested.
+\textbf{Faithful attribution.} Against occlusion on 20 images, Grad-CAM on
+this classifier agrees at median Spearman $\rho = -0.02$, no better than
+chance, so the system draws no saliency map; a method passing that test
+remains open.
+
+%==============================================================================
 \section{Conclusion}
 %==============================================================================
 \balance
 
-We presented a three-signal detector whose fusion rule treats an unavailable
-signal as absent evidence rather than as evidence of authenticity, evaluated
-under a protocol that keeps dataset artefacts separable from detection. It
-reaches ROC-AUC 0.9196 on a 400-image public set spanning 50 generators and
-0.9487 under a resolution control, dominating each constituent.
+Our three-signal detector treats an unavailable signal as absent evidence, not
+evidence of authenticity, and reaches ROC-AUC 0.9196 on a 400-image public set
+spanning 50 generators, 0.9487 under a resolution control.
 
 The methodological claims are the ones we would most like carried forward.
 First, report a degradation sweep at the deployed threshold, not by AUC alone:
@@ -647,10 +660,7 @@ without the control. Third, log per signal: that exposed a provenance signature
 firing at full confidence on 31\% of real photographs while every unit test
 passed, and an ensemble ranking below its lowest-weighted component. All three
 are cheap, and belong in the minimum reporting standard for fused detectors.
-Future work: a content- and resolution-matched evaluation set, the prerequisite
-for attributing the frequency signal's discrimination and for fitting the
-weights at all; envelopes under adversarial post-processing; real C2PA manifest
-parsing; and a labelled video set. Every figure and table is produced by a
+Every figure and table is produced by a
 script in the project repository, recomputed from one per-file, per-signal dump
 without re-running inference.
 
